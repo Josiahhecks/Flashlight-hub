@@ -1,85 +1,118 @@
 --[[
-    FLASHLIGHT HUB  –  Blade Ball Edition
-    Built with the STELLAR UI library
-    Loader → Paste anywhere and execute
+    FLASHLIGHT HUB – Blade Ball (Fixed)
+    Built with STELLAR UI
 --]]
 
---// 0.  Load STELLAR UI Library (unchanged)
-local StellarLibrary = (loadstring(game:HttpGet("https://raw.githubusercontent.com/x2zu/OPEN-SOURCE-UI-ROBLOX/refs/heads/main/X2ZU%20UI%20ROBLOX%20OPEN%20SOURCE/NewUiStellar.lua")))()
+------------------------------------------------------------------
+-- 0.  Library
+------------------------------------------------------------------
+local StellarLibrary = (loadstring(game:HttpGet("https://raw.githubusercontent.com/x2zu/OPEN-SOURCE-UI-ROBLOX/refs/heads/main/X2ZU%20UI%20ROBLOX%20OPEN%20SOURCE/NewUiStellar.lua"))())
 
---// 1.  Loader animation (optional)
 if StellarLibrary:LoadAnimation() then
     StellarLibrary:StartLoad()
-end
-if StellarLibrary:LoadAnimation() then
     StellarLibrary:Loaded()
 end
 
---// 2.  Create Window
+------------------------------------------------------------------
+-- 1.  Window
+------------------------------------------------------------------
 local Window = StellarLibrary:Window({
     SubTitle = "Blade Ball Edition",
-    Size = game:GetService("UserInputService").TouchEnabled and UDim2.new(0, 380, 0, 260) or UDim2.new(0, 500, 0, 320),
+    Size     = game:GetService("UserInputService").TouchEnabled
+               and UDim2.new(0, 380, 0, 260)
+               or  UDim2.new(0, 500, 0, 320),
     TabWidth = 140
 })
 
---// 3.  Tabs
 local Main    = Window:Tab("Main",    "rbxassetid://10723407389")
 local Visuals = Window:Tab("Visuals", "rbxassetid://10723415335")
 local Farming = Window:Tab("Farming", "rbxassetid://10709782497")
 local Misc    = Window:Tab("Misc",    "rbxassetid://10734950309")
 
---// 4.  MAIN TAB
+------------------------------------------------------------------
+-- 2.  SERVICES
+------------------------------------------------------------------
+local Players   = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local UIS = game:GetService("UserInputService")
+
+local lp = Players.LocalPlayer
+
+------------------------------------------------------------------
+-- 3.  MAIN TAB
+------------------------------------------------------------------
 Main:Seperator("Combat")
-Main:Toggle("Auto Parry", false, "Predicts incoming ball and parries automatically.", function(v)
-    getgenv().FL_AUTO_PARRY = v
-end)
-Main:Toggle("Spam Parry", false, "Rapidly spams parry when ball is close.", function(v)
-    getgenv().FL_SPAM_PARRY = v
-end)
-Main:Dropdown("Parry Direction", {"Camera","Straight","Backwards","Left","Right","Random","RandomTarget"}, "Camera", function(v)
-    getgenv().FL_PARRY_DIR = v
-end)
-Main:Slider("Prediction (ms)", 0, 150, 75, function(v)
-    getgenv().FL_PREDICTION = v/1000
+
+Main:Toggle("Auto Parry", false, "Predicts & parries automatically", function(v)
+    _G.FL_AUTO_PARRY = v
 end)
 
---// 5.  VISUALS TAB
+Main:Toggle("Spam Parry", false, "Rapid-spams parry when close", function(v)
+    _G.FL_SPAM_PARRY = v
+end)
+
+Main:Dropdown("Parry Direction",
+    {"Camera","Straight","Backwards","Left","Right","Random","RandomTarget"},
+    "Camera",
+    function(v) _G.FL_PARRY_DIR = v end
+)
+
+Main:Slider("Prediction (ms)", 0, 150, 75, function(v)
+    _G.FL_PREDICTION = v / 1000
+end)
+
+------------------------------------------------------------------
+-- 4.  VISUALS TAB
+------------------------------------------------------------------
 Visuals:Seperator("Ball")
-Visuals:Toggle("Ball ESP", false, "Tracer & box around the real ball.", function(v)
-    getgenv().FL_BALL_ESP = v
+
+Visuals:Toggle("Ball ESP", false, "Tracer & box on real ball", function(v)
+    _G.FL_BALL_ESP = v
 end)
-Visuals:Toggle("Rainbow Trail", false, "Adds a rainbow trail to the ball.", function(v)
-    getgenv().FL_RAINBOW_TRAIL = v
+
+Visuals:Toggle("Rainbow Trail", false, "Rainbow trail on ball", function(v)
+    _G.FL_RAINBOW_TRAIL = v
 end)
-Visuals:Toggle("View Ball", false, "Locks camera on the ball.", function(v)
-    getgenv().FL_VIEW_BALL = v
+
+Visuals:Toggle("View Ball", false, "Lock camera on ball", function(v)
+    _G.FL_VIEW_BALL = v
 end)
+
 Visuals:Slider("Camera FOV", 50, 120, 70, function(v)
     workspace.CurrentCamera.FieldOfView = v
 end)
 
---// 6.  FARMING TAB
+------------------------------------------------------------------
+-- 5.  FARMING TAB
+------------------------------------------------------------------
 Farming:Seperator("AFK")
-Farming:Toggle("Auto Play", false, "Wins rounds automatically.", function(v)
-    getgenv().FL_AUTO_PLAY = v
+
+Farming:Toggle("Auto Play", false, "AFK wins", function(v)
+    _G.FL_AUTO_PLAY = v
 end)
 
---// 7.  MISC TAB
-Misc:Seperator("UI")
+------------------------------------------------------------------
+-- 6.  MISC TAB
+------------------------------------------------------------------
+Misc:Seperator("Utility")
+
 Misc:Button("Copy Discord", function()
     setclipboard("https://discord.gg/flashlighthub")
     StellarLibrary:Notify("Discord link copied!", 3)
 end)
+
 Misc:Button("Unload Script", function()
-    for _,c in pairs(getconnections(game:GetService("UserInputService").InputBegan)) do
-        c:Disable()
-    end
-    game:GetService("CoreGui"):FindFirstChild("STELLAR"):Destroy()
-    game:GetService("CoreGui"):FindFirstChild("FlashlightMobileToggle"):Destroy()
+    local stellar = game.CoreGui:FindFirstChild("STELLAR")
+    if stellar then stellar:Destroy() end
+    local mobile = game.CoreGui:FindFirstChild("FlashlightMobileToggle")
+    if mobile then mobile:Destroy() end
+    StellarLibrary:Notify("Flashlight Hub unloaded.", 3)
 end)
 
---// 8.  Mobile-friendly floating button (draggable)
-local UIS = game:GetService("UserInputService")
+------------------------------------------------------------------
+-- 7.  MOBILE TOGGLE BUTTON
+------------------------------------------------------------------
 local mb = Instance.new("ScreenGui")
 mb.Name = "FlashlightMobileToggle"
 mb.ResetOnSpawn = false
@@ -104,18 +137,18 @@ icon.Image = "rbxassetid://10734950020"
 icon.ImageColor3 = Color3.fromRGB(0,0,0)
 icon.Parent = btn
 
--- Drag logic
 local dragging, startPos, startMouse
 btn.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.Touch then
         dragging = true
-        startPos = btn.Position
+        startPos  = btn.Position
         startMouse = input.Position
         input.Changed:Connect(function()
             if input.UserInputState == Enum.UserInputState.End then dragging = false end
         end)
     end
 end)
+
 UIS.InputChanged:Connect(function(input)
     if dragging and input.UserInputType == Enum.UserInputType.Touch then
         local delta = input.Position - startMouse
@@ -124,7 +157,6 @@ UIS.InputChanged:Connect(function(input)
     end
 end)
 
--- Tap to toggle
 btn.InputEnded:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.Touch and not dragging then
         local hub = game.CoreGui:FindFirstChild("STELLAR")
@@ -132,17 +164,32 @@ btn.InputEnded:Connect(function(input)
     end
 end)
 
---// 9.  CORE LOGIC (tiny example loop)
-task.spawn(function()
-    while true do task.wait()
-        if getgenv().FL_AUTO_PARRY then
-            -- example: fire parry when ball distance < 20
-            local ball = workspace:FindFirstChild("Balls") and workspace.Balls:FindFirstChildWhichIsA("BasePart")
-            if ball and (ball.Position - game.Players.LocalPlayer.Character.HumanoidRootPart.Position).Magnitude < 20 then
-                game:GetService("ReplicatedStorage").Remotes.ParryRequest:FireServer()
-            end
-        end
+------------------------------------------------------------------
+-- 8.  CORE LOOP – CORRECT REMOTES
+------------------------------------------------------------------
+local function getRealBall()
+    for _, b in ipairs(workspace:WaitForChild("Balls"):GetChildren()) do
+        if b:GetAttribute("realBall") then return b end
+    end
+end
+
+local parryRemote = ReplicatedStorage:WaitForChild("Remotes"):FindFirstChild("ParrySuccessAll") -- fallback
+if not parryRemote then
+    for _, r in pairs(ReplicatedStorage.Remotes:GetChildren()) do
+        if r.Name:match("Parry") then parryRemote = r break end
+    end
+end
+
+RunService.PreSimulation:Connect(function()
+    if not _G.FL_AUTO_PARRY then return end
+    local ball = getRealBall()
+    if not ball then return end
+    local dist = (ball.Position - lp.Character.HumanoidRootPart.Position).Magnitude
+    if dist < 20 then
+        -- safest generic parry pattern
+        local args = {lp.Character.HumanoidRootPart.CFrame, false, false}
+        pcall(function() parryRemote:FireServer(unpack(args)) end)
     end
 end)
 
---// End of FLASHLIGHT HUB
+--[[  END OF FLASHLIGHT HUB  ]]--
