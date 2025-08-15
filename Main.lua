@@ -1,7 +1,8 @@
 --[[
     🔦 FLASH LIGHT HUB
-    Game-Specific Tools from INPROGRESS.txt
     Powered by STELLAR UI (x2zu)
+    Based on INPROGRESS.txt & message.txt
+    Auto Farm • Auto Buy • Quest Tools • Mobile Support
 --]]
 
 ------------------------------------------------------------------
@@ -36,16 +37,16 @@ end
 ------------------------------------------------------------------
 local Window = Stellar:Window({
     SubTitle = "Flash Light Hub",
-    Size     = game:GetService("UserInputService").TouchEnabled
-               and UDim2.new(0, 380, 0, 260)
-               or UDim2.new(0, 500, 0, 320),
+    Size = game:GetService("UserInputService").TouchEnabled
+        and UDim2.new(0, 380, 0, 260)
+        or UDim2.new(0, 500, 0, 320),
     TabWidth = 140
 })
 
-local Auto    = Window:Tab("Auto",    "rbxassetid://10723415335")
-local Teleport = Window:Tab("Teleport", "rbxassetid://10709782497")
-local Quests  = Window:Tab("Quests",  "rbxassetid://10734950309")
-local Misc    = Window:Tab("Misc",    "rbxassetid://10734950309")
+local AutoFarm = Window:Tab("Auto Farm", "rbxassetid://10709782497")
+local AutoBuy = Window:Tab("Auto Buy", "rbxassetid://10723415335")
+local Quests  = Window:Tab("Quests", "rbxassetid://10734950309")
+local Misc    = Window:Tab("Misc", "rbxassetid://10747373176")
 
 ------------------------------------------------------------------
 -- 3. SERVICES & PLAYER
@@ -54,49 +55,20 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
-local UIS = game:GetService("UserInputService")
 
 local lp = Players.LocalPlayer
 local char = lp.Character or lp.CharacterAdded:Wait()
+local hrp = char:WaitForChild("HumanoidRootPart")
 
 ------------------------------------------------------------------
--- 4. AUTO TAB - AUTO BUY BLOCKS
+-- 4. AUTO FARM TAB - TELEPORT LOOP
 ------------------------------------------------------------------
-Auto:Seperator("Auto Buy Blocks")
-
-local autoBuyEnabled = false
-Auto:Toggle("Auto Buy Plastic Blocks", false, "Automatically buys blocks every few seconds", function(v)
-    autoBuyEnabled = v
-
-    while autoBuyEnabled and task.wait(3) do
-        local args = {"PlasticBlock", 1}
-        pcall(function()
-            Workspace:WaitForChild("ItemBoughtFromShop"):InvokeServer(unpack(args))
-        end)
-    end
-end)
-
-Auto:Seperator("Auto Farm")
-
-local autoFarmEnabled = false
-Auto:Toggle("Auto Farm Chests", false, "Buys and farms common chests", function(v)
-    autoFarmEnabled = v
-
-    while autoFarmEnabled and task.wait(3) do
-        local args = {"Common Chest", 1}
-        pcall(function()
-            Workspace:WaitForChild("ItemBoughtFromShop"):InvokeServer(unpack(args))
-        end)
-    end
-end)
-
-------------------------------------------------------------------
--- 5. TELEPORT TAB - PLATFORM TELEPORTER
-------------------------------------------------------------------
-Teleport:Seperator("Platform Teleporter")
+AutoFarm:Seperator("Auto Farm Path")
 
 local isRunning = false
 local spawnedPlatforms = {}
+
+-- Final chest zone = auto-reward
 local positions = {
     Vector3.new(-62, 67, 1363),
     Vector3.new(-65, 58, 2135),
@@ -108,38 +80,24 @@ local positions = {
     Vector3.new(-63, 63, 6751),
     Vector3.new(-50, 28, 7527),
     Vector3.new(-104, 37, 8298),
-    Vector3.new(-57, -358, 9491)
+    Vector3.new(-57, -358, 9491) -- Chest auto-claim here
 }
 
-local function removePlatforms()
-    for _, p in ipairs(spawnedPlatforms) do
-        if p and p.Parent then p:Destroy() end
-    end
-    table.clear(spawnedPlatforms)
-
-    -- Clean up any leftover in workspace
-    for _, obj in ipairs(Workspace:GetChildren()) do
-        if obj:IsA("Part") and obj.Name == "TeleportPlatform" then
-            obj:Destroy()
-        end
-    end
-end
-
 local function placePlatform(pos)
-    for _, part in ipairs(spawnedPlatforms) do
-        if part and part.Parent and (part.Position - Vector3.new(pos.X, pos.Y - 3, pos.Z)).Magnitude < 0.1 then
+    for _, p in ipairs(spawnedPlatforms) do
+        if p and p.Position == Vector3.new(pos.X, pos.Y - 3, pos.Z) then
             return -- already exists
         end
     end
 
     local platform = Instance.new("Part")
+    platform.Name = "TeleportPlatform"
     platform.Size = Vector3.new(10, 1, 10)
     platform.Position = Vector3.new(pos.X, pos.Y - 3, pos.Z)
     platform.Anchored = true
     platform.CanCollide = true
     platform.Material = Enum.Material.SmoothPlastic
     platform.BrickColor = BrickColor.new("Bright yellow")
-    platform.Name = "TeleportPlatform"
     platform.Parent = Workspace
 
     local surfaceGui = Instance.new("SurfaceGui")
@@ -150,7 +108,7 @@ local function placePlatform(pos)
     local textLabel = Instance.new("TextLabel")
     textLabel.Size = UDim2.new(1, 0, 1, 0)
     textLabel.BackgroundTransparency = 1
-    textLabel.Text = "Teleport Platform"
+    textLabel.Text = "Auto Farm Path"
     textLabel.TextColor3 = Color3.new(0, 0, 0)
     textLabel.TextScaled = true
     textLabel.Font = Enum.Font.SourceSansBold
@@ -159,33 +117,65 @@ local function placePlatform(pos)
     table.insert(spawnedPlatforms, platform)
 end
 
-Teleport:Toggle("Auto Teleport Loop", false, "Spawns platforms and teleports through levels", function(v)
+local function removePlatforms()
+    for _, p in ipairs(spawnedPlatforms) do
+        if p and p.Parent then p:Destroy() end
+    end
+    table.clear(spawnedPlatforms)
+end
+
+AutoFarm:Toggle("Auto Farm Loop", false, "Farms chest automatically, resets 1s after", function(v)
     isRunning = v
 
     if isRunning then
-        while isRunning and task.wait(1) do
-            local hrp = char:FindFirstChild("HumanoidRootPart")
-            if not hrp then continue end
+        task.spawn(function()
+            while isRunning do
+                for i, pos in ipairs(positions) do
+                    if not isRunning then break end
+                    placePlatform(pos)
+                    hrp.CFrame = CFrame.new(pos)
+                    task.wait(0.3)
+                end
 
-            for _, pos in ipairs(positions) do
-                if not isRunning then break end
-                placePlatform(pos)
-                hrp.CFrame = CFrame.new(pos)
-                task.wait(2)
+                -- ✅ Chest auto-claimed
+                Stellar:Notify("Chest claimed! Resetting in 1s...", 2)
+                task.wait(1) -- Wait 1 second after auto-claim
+                removePlatforms()
+                task.wait(9) -- 10s total loop
             end
-            task.wait(16)
-        end
+        end)
+    else
+        removePlatforms()
     end
-
-    removePlatforms()
 end)
 
 ------------------------------------------------------------------
--- 6. QUESTS TAB - AUTO QUEST & TOUCH
+-- 5. AUTO BUY TAB
 ------------------------------------------------------------------
-Quests:Seperator("Auto Quest System")
+AutoBuy:Seperator("Auto Buy Items")
 
--- Map team colors to cloud paths
+AutoBuy:Toggle("Auto Buy Plastic Blocks", false, "Buys 1 block every 3 seconds", function(v)
+    while v and task.wait(3) do
+        pcall(function()
+            Workspace:WaitForChild("ItemBoughtFromShop"):InvokeServer("PlasticBlock", 1)
+        end)
+    end
+end)
+
+AutoBuy:Toggle("Auto Buy Common Chest", false, "Farms common chests", function(v)
+    while v and task.wait(3) do
+        pcall(function()
+            Workspace:WaitForChild("ItemBoughtFromShop"):InvokeServer("Common Chest", 1)
+        end)
+    end
+end)
+
+------------------------------------------------------------------
+-- 6. QUESTS TAB
+------------------------------------------------------------------
+Quests:Seperator("Quest Automation")
+
+-- Team → Cloud & TouchInterest
 local brickColorToCloud = {
     ["Really red"] = function() return Workspace["Really redZone"].Quest.Ramp:GetChildren()[20] end,
     ["Magenta"] = function() return Workspace["MagentaZone"].Quest.Ramp:GetChildren()[20] end,
@@ -196,37 +186,34 @@ local brickColorToCloud = {
     ["New Yeller"] = function() return Workspace["New YellerZone"].Quest.Ramp:GetChildren()[20] end
 }
 
--- Map team colors to touch interests
 local brickColorToTouchInterest = {
-    ["Really red"] = function() return Workspace["Really redZone"].Quest.Ramp:GetChildren()[20]:FindFirstChildOfClass("TouchTransmitter") or Workspace["Really redZone"].Quest.Ramp:GetChildren()[20]:FindFirstChild("TouchInterest") end,
-    ["Magenta"] = function() return Workspace["MagentaZone"].Quest.Ramp:GetChildren()[20]:FindFirstChildOfClass("TouchTransmitter") or Workspace["MagentaZone"].Quest.Ramp:GetChildren()[20]:FindFirstChild("TouchInterest") end,
-    ["Camo"] = function() return Workspace["CamoZone"].Quest.Ramp:GetChildren()[20]:FindFirstChildOfClass("TouchTransmitter") or Workspace["CamoZone"].Quest.Ramp:GetChildren()[20]:FindFirstChild("TouchInterest") end,
-    ["Really blue"] = function() return Workspace["Really blueZone"].Quest.Ramp:GetChildren()[20]:FindFirstChildOfClass("TouchTransmitter") or Workspace["Really blueZone"].Quest.Ramp:GetChildren()[20]:FindFirstChild("TouchInterest") end,
-    ["White"] = function() return Workspace["WhiteZone"].Quest.Ramp:GetChildren()[20]:FindFirstChildOfClass("TouchTransmitter") or Workspace["WhiteZone"].Quest.Ramp:GetChildren()[20]:FindFirstChild("TouchInterest") end,
-    ["Black"] = function() return Workspace["BlackZone"].Quest.Ramp:GetChildren()[20]:FindFirstChildOfClass("TouchTransmitter") or Workspace["BlackZone"].Quest.Ramp:GetChildren()[20]:FindFirstChild("TouchInterest") end,
-    ["New Yeller"] = function() return Workspace["New YellerZone"].Quest.Ramp:GetChildren()[20]:FindFirstChildOfClass("TouchTransmitter") or Workspace["New YellerZone"].Quest.Ramp:GetChildren()[20]:FindFirstChild("TouchInterest") end
+    ["Really red"] = function() return brickColorToCloud["Really red"]():FindFirstChildOfClass("TouchTransmitter") or brickColorToCloud["Really red"]():FindFirstChild("TouchInterest") end,
+    ["Magenta"] = function() return brickColorToCloud["Magenta"]():FindFirstChildOfClass("TouchTransmitter") or brickColorToCloud["Magenta"]():FindFirstChild("TouchInterest") end,
+    ["Camo"] = function() return brickColorToCloud["Camo"]():FindFirstChildOfClass("TouchTransmitter") or brickColorToCloud["Camo"]():FindFirstChild("TouchInterest") end,
+    ["Really blue"] = function() return brickColorToCloud["Really blue"]():FindFirstChildOfClass("TouchTransmitter") or brickColorToCloud["Really blue"]():FindFirstChild("TouchInterest") end,
+    ["White"] = function() return brickColorToCloud["White"]():FindFirstChildOfClass("TouchTransmitter") or brickColorToCloud["White"]():FindFirstChild("TouchInterest") end,
+    ["Black"] = function() return brickColorToCloud["Black"]():FindFirstChildOfClass("TouchTransmitter") or brickColorToCloud["Black"]():FindFirstChild("TouchInterest") end,
+    ["New Yeller"] = function() return brickColorToCloud["New Yeller"]():FindFirstChildOfClass("TouchTransmitter") or brickColorToCloud["New Yeller"]():FindFirstChild("TouchInterest") end
 }
 
 local function startQuest()
-    local args = { 3 } -- Quest ID
     pcall(function()
-        Workspace:WaitForChild("QuestMakerEvent"):FireServer(unpack(args))
+        Workspace:WaitForChild("QuestMakerEvent"):FireServer(3)
     end)
 end
 
 local function simulateTouch()
-    local brickColorName = tostring(lp.Team.TeamColor)
-    local touchInterestGetter = brickColorToTouchInterest[brickColorName]
-    if not touchInterestGetter then warn("No TouchInterest for", brickColorName) return end
+    local teamColor = tostring(lp.Team.TeamColor)
+    local touchInterestGetter = brickColorToTouchInterest[teamColor]
+    if not touchInterestGetter then return end
 
     local touchInterest = touchInterestGetter()
-    if not touchInterest then warn("TouchInterest not found") return end
+    if not touchInterest then return end
 
     local part = touchInterest:IsA("TouchTransmitter") and touchInterest.Parent or touchInterest
-    firetouchinterest(char.HumanoidRootPart, part, 0)
+    firetouchinterest(hrp, part, 0)
     task.wait(0.1)
-    firetouchinterest(char.HumanoidRootPart, part, 1)
-    print("✅ Touched for team:", brickColorName)
+    firetouchinterest(hrp, part, 1)
 end
 
 Quests:Button("Start Quest + Touch", function()
@@ -235,7 +222,7 @@ Quests:Button("Start Quest + Touch", function()
     task.delay(0.5, simulateTouch)
 end)
 
--- Butter Click Detector
+-- Click Butter
 local function getButterClickDetector()
     local zoneMap = {
         ["New Yeller"] = "New YellerZone",
@@ -277,13 +264,19 @@ end)
 ------------------------------------------------------------------
 -- 7. MISC TAB
 ------------------------------------------------------------------
-Misc:Seperator("Tools")
+Misc:Seperator("Tools & Utilities")
 
 Misc:Button("Unlock Gamepasses", function()
-    -- Simulate buying a gamepass
     pcall(function()
         Workspace:WaitForChild("ItemBoughtFromShop"):InvokeServer("GamepassItem", 1)
         Stellar:Notify("Gamepasses unlocked!", 3)
+    end)
+end)
+
+Misc:Button("Free 200 Slots", function()
+    pcall(function()
+        Workspace:WaitForChild("ItemBoughtFromShop"):InvokeServer("200MoreSlots", 1)
+        Stellar:Notify("200 slots unlocked!", 3)
     end)
 end)
 
@@ -295,48 +288,49 @@ Misc:Button("Open Infinite Yield", function()
 end)
 
 Misc:Button("Unload Hub", function()
-    local stellarGui = game.CoreGui:FindFirstChild("STELLAR")
-    if stellarGui then stellarGui:Destroy() end
-    local mobileBtn = game.CoreGui:FindFirstChild("FlashlightMobileToggle")
-    if mobileBtn then mobileBtn:Destroy() end
-    print("✅ Flash Light Hub unloaded.")
+    local stellar = game.CoreGui:FindFirstChild("STELLAR")
+    if stellar then stellar:Destroy() end
+    local mobile = game.CoreGui:FindFirstChild("FlashlightMobileToggle")
+    if mobile then mobile:Destroy() end
+    Stellar:Notify("Hub unloaded.", 3)
 end)
 
 ------------------------------------------------------------------
 -- 8. MOBILE TOGGLE BUTTON
 ------------------------------------------------------------------
-local MobileGui = Instance.new("ScreenGui")
-MobileGui.Name = "FlashlightMobileToggle"
-MobileGui.ResetOnSpawn = false
-MobileGui.Parent = game.CoreGui
+local mb = Instance.new("ScreenGui")
+mb.Name = "FlashlightMobileToggle"
+mb.ResetOnSpawn = false
+mb.Parent = game:GetService("CoreGui")
 
-local ToggleBtn = Instance.new("ImageButton")
-ToggleBtn.Size = UDim2.new(0, 55, 0, 55)
-ToggleBtn.Position = UDim2.new(0.15, 0, 0.75, 0)
-ToggleBtn.AnchorPoint = Vector2.new(0.5, 0.5)
-ToggleBtn.BackgroundTransparency = 1
-ToggleBtn.Image = "rbxassetid://3926307971"
-ToggleBtn.ImageColor3 = Color3.fromRGB(255, 255, 255)
-ToggleBtn.ImageTransparency = 0.2
-ToggleBtn.Parent = MobileGui
+local btn = Instance.new("ImageButton")
+btn.Size = UDim2.new(0, 55, 0, 55)
+btn.AnchorPoint = Vector2.new(0.5, 0.5)
+btn.Position = UDim2.new(0.15, 0, 0.75, 0)
+btn.BackgroundTransparency = 1
+btn.Image = "rbxassetid://3926307971"
+btn.ImageColor3 = Color3.fromRGB(255, 255, 255)
+btn.ImageTransparency = 0.2
+btn.Parent = mb
 
-local Icon = Instance.new("ImageLabel")
-Icon.Size = UDim2.new(0, 30, 0, 30)
-Icon.Position = UDim2.new(0.5, 0, 0.5, 0)
-Icon.AnchorPoint = Vector2.new(0.5, 0.5)
-Icon.BackgroundTransparency = 1
-Icon.Image = "rbxassetid://10734950020"
-Icon.ImageColor3 = Color3.fromRGB(0, 0, 0)
-Icon.Parent = ToggleBtn
+local icon = Instance.new("ImageLabel")
+icon.Size = UDim2.new(0, 30, 0, 30)
+icon.AnchorPoint = Vector2.new(0.5, 0.5)
+icon.Position = UDim2.new(0.5, 0, 0.5, 0)
+icon.BackgroundTransparency = 1
+icon.Image = "rbxassetid://10734950020"
+icon.ImageColor3 = Color3.fromRGB(0, 0, 0)
+icon.Parent = btn
 
--- Drag & Toggle Logic
+-- Drag + Toggle
 local dragging = false
 local startPos, startMouse
+local UIS = game:GetService("UserInputService")
 
-ToggleBtn.InputBegan:Connect(function(input)
+btn.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.Touch then
         dragging = true
-        startPos = ToggleBtn.Position
+        startPos = btn.Position
         startMouse = input.Position
         input.Changed:Connect(function()
             if input.UserInputState == Enum.UserInputState.End then
@@ -352,11 +346,19 @@ end)
 UIS.InputChanged:Connect(function(input)
     if dragging and input.UserInputType == Enum.UserInputType.Touch then
         local delta = input.Position - startMouse
-        ToggleBtn.Position = UDim2.new(
+        btn.Position = UDim2.new(
             startPos.X.Scale, startPos.X.Offset + delta.X,
             startPos.Y.Scale, startPos.Y.Offset + delta.Y
         )
     end
 end)
 
-print("✨ Flash Light Hub Loaded! Use Insert key or mobile button to toggle.")
+btn.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Touch and not dragging then
+        local hub = game.CoreGui:FindFirstChild("STELLAR")
+        if hub then hub.Enabled = not hub.Enabled end
+    end
+end)
+
+print("✨ Flash Light Hub Loaded Successfully!")
+print("💡 Press Insert or tap mobile button to toggle.") 
