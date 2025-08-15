@@ -1,332 +1,362 @@
--- // Flash Light Hub - Starter Base
--- // Based on STELLAR UI Lib & INPROGRESS Functional Scripts
--- // Expandable, Saveable, Modern Design
+--[[
+    🔦 FLASH LIGHT HUB
+    Game-Specific Tools from INPROGRESS.txt
+    Powered by STELLAR UI (x2zu)
+--]]
 
-repeat wait() until game:IsLoaded()
-repeat wait() until game.Players.LocalPlayer and game.Players.LocalPlayer.Character
-wait(1)
+------------------------------------------------------------------
+-- 1. LOAD STELLAR UI LIBRARY
+------------------------------------------------------------------
+local function loadStellar()
+    local url = "https://raw.githubusercontent.com/x2zu/OPEN-SOURCE-UI-ROBLOX/refs/heads/main/X2ZU%20UI%20ROBLOX%20OPEN%20SOURCE/NewUiStellar.lua"
+    local Success, Library = pcall(function()
+        return loadstring(game:HttpGet(url, true))()
+    end)
 
--- // Services
+    if not Success then
+        warn("❌ Failed to load STELLAR UI:", Library)
+        return nil
+    end
+
+    return Library
+end
+
+local Stellar = loadStellar()
+if not Stellar then return end
+
+-- Show loading animation
+if Stellar:LoadAnimation() then
+    Stellar:StartLoad()
+    task.wait(0.5)
+    Stellar:Loaded()
+end
+
+------------------------------------------------------------------
+-- 2. CREATE WINDOW & TABS
+------------------------------------------------------------------
+local Window = Stellar:Window({
+    SubTitle = "Flash Light Hub",
+    Size     = game:GetService("UserInputService").TouchEnabled
+               and UDim2.new(0, 380, 0, 260)
+               or UDim2.new(0, 500, 0, 320),
+    TabWidth = 140
+})
+
+local Auto    = Window:Tab("Auto",    "rbxassetid://10723415335")
+local Teleport = Window:Tab("Teleport", "rbxassetid://10709782497")
+local Quests  = Window:Tab("Quests",  "rbxassetid://10734950309")
+local Misc    = Window:Tab("Misc",    "rbxassetid://10734950309")
+
+------------------------------------------------------------------
+-- 3. SERVICES & PLAYER
+------------------------------------------------------------------
 local Players = game:GetService("Players")
-local Player = Players.LocalPlayer
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
-local TweenService = game:GetService("TweenInfo")
-local HttpService = game:GetService("HttpService")
-local CoreGui = game:GetService("CoreGui")
+local RunService = game:GetService("RunService")
+local UIS = game:GetService("UserInputService")
 
--- // Player Data
-local PlayerName = Player.Name
+local lp = Players.LocalPlayer
+local char = lp.Character or lp.CharacterAdded:Wait()
 
--- // UI Settings
-local UISettings = {
-    MainColor = Color3.fromRGB(100, 200, 255), -- Light blue/cyan
-    DarkColor = Color3.fromRGB(20, 20, 30),
-    LightText = Color3.fromRGB(240, 240, 240),
-    DarkText = Color3.fromRGB(100, 100, 100),
-    AccentColor = Color3.fromRGB(0, 180, 255),
-    BackgroundTransparency = 0.92,
-    Font = Enum.Font.FredokaOne,
-    TextSize = 14
-}
+------------------------------------------------------------------
+-- 4. AUTO TAB - AUTO BUY BLOCKS
+------------------------------------------------------------------
+Auto:Seperator("Auto Buy Blocks")
 
--- // Config System (Load/Save)
-local Config = {
-    WindowSize = UDim2.new(0, 500, 0, 300),
-    TabWidth = UDim2.new(0, 150, 0, 30),
-    SaveSettings = true,
-    LoadAnimation = true
-}
+local autoBuyEnabled = false
+Auto:Toggle("Auto Buy Plastic Blocks", false, "Automatically buys blocks every few seconds", function(v)
+    autoBuyEnabled = v
 
--- // Create Main ScreenGui
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "FlashLightHub"
-ScreenGui.Parent = CoreGui
-ScreenGui.ResetOnSpawn = false
-
--- // Main Frame
-local MainFrame = Instance.new("Frame")
-MainFrame.Name = "MainFrame"
-MainFrame.Parent = ScreenGui
-MainFrame.BackgroundColor3 = UISettings.DarkColor
-MainFrame.BorderSizePixel = 0
-MainFrame.Position = UDim2.new(0.5, -250, 0.5, -150)
-MainFrame.Size = Config.WindowSize
-MainFrame.ClipsDescendants = true
-
--- // Rounded Corners
-local function CreateRounded(obj, radius)
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, radius)
-    corner.Parent = obj
-end
-
-CreateRounded(MainFrame, 14)
-
--- // UI Stroke (Glow Border)
-local UIStroke = Instance.new("UIStroke")
-UIStroke.Color = UISettings.AccentColor
-UIStroke.Transparency = 0.7
-UIStroke.Parent = MainFrame
-
--- // UI List Layout (Tabs)
-local UIListLayout = Instance.new("UIListLayout")
-UIListLayout.Parent = MainFrame
-UIListLayout.FillDirection = Enum.FillDirection.Horizontal
-UIListLayout.Padding = UDim.new(0, 10)
-UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-
--- // Tab Holder
-local TabsFrame = Instance.new("Frame")
-TabsFrame.Name = "Tabs"
-TabsFrame.Parent = MainFrame
-TabsFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
-TabsFrame.BorderSizePixel = 0
-TabsFrame.Size = UDim2.new(1, 0, 0, 40)
-TabsFrame.Position = UDim2.new(0, 0, 0, 0)
-CreateRounded(TabsFrame, 12)
-UIStroke.Clone().Parent = TabsFrame
-
--- // Pages Frame
-local PagesFrame = Instance.new("Frame")
-PagesFrame.Name = "Pages"
-PagesFrame.Parent = MainFrame
-PagesFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-PagesFrame.BorderSizePixel = 0
-PagesFrame.Position = UDim2.new(0, 10, 0, 50)
-PagesFrame.Size = UDim2.new(1, -20, 1, -60)
-CreateRounded(PagesFrame, 10)
-
--- // Page Container (Scrolling)
-local PageContainer = Instance.new("ScrollingFrame")
-PageContainer.Name = "PageContainer"
-PageContainer.Parent = PagesFrame
-PageContainer.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-PageContainer.BorderSizePixel = 0
-PageContainer.Size = UDim2.new(1, 0, 1, 0)
-PageContainer.ScrollBarThickness = 6
-PageContainer.ScrollBarImageColor3 = UISettings.AccentColor
-
--- // Add UIListLayout for Pages
-local PageLayout = Instance.new("UIListLayout")
-PageLayout.Parent = PageContainer
-PageLayout.Padding = UDim.new(0, 10)
-PageLayout.SortOrder = Enum.SortOrder.LayoutOrder
-
--- // Drag Function
-local function MakeDraggable(ui, frame)
-    frame.Active = true
-    frame.Draggable = true
-end
-
-MakeDraggable(ScreenGui, MainFrame)
-
--- // Tab System
-local Tabs = {}
-local CurrentTab = nil
-
-function CreateTab(tabName)
-    local TabButton = Instance.new("TextButton")
-    TabButton.Name = tabName .. "Tab"
-    TabButton.Parent = TabsFrame
-    TabButton.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
-    TabButton.BorderSizePixel = 0
-    TabButton.Size = Config.TabWidth
-    TabButton.Text = tabName
-    TabButton.TextColor3 = UISettings.LightText
-    TabButton.TextSize = UISettings.TextSize
-    TabButton.Font = UISettings.Font
-    TabButton.AutoButtonColor = false
-    TabButton.ClipsDescendants = true
-
-    CreateRounded(TabButton, 8)
-
-    -- // Indicator Line
-    local Indicator = Instance.new("Frame")
-    Indicator.Name = "SelectedTab"
-    Indicator.Parent = TabButton
-    Indicator.BackgroundColor3 = UISettings.AccentColor
-    Indicator.BorderSizePixel = 0
-    Indicator.Position = UDim2.new(0, 0, 1, 0)
-    Indicator.Size = UDim2.new(0, 0, 0, 3)
-    Indicator.Visible = false
-
-    -- // Hover Effect
-    TabButton.MouseEnter:Connect(function()
-        if CurrentTab ~= TabButton then
-            TabButton.TextColor3 = UISettings.AccentColor
-        end
-    end)
-
-    TabButton.MouseLeave:Connect(function()
-        if CurrentTab ~= TabButton then
-            TabButton.TextColor3 = UISettings.LightText
-        end
-    end)
-
-    -- // Page Frame
-    local Page = Instance.new("Frame")
-    Page.Name = tabName .. "Page"
-    Page.Parent = PageContainer
-    Page.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
-    Page.BorderSizePixel = 0
-    Page.Size = UDim2.new(1, 0, 0, 250)
-    Page.Visible = false
-    CreateRounded(Page, 8)
-
-    -- // Add to layout
-    local Padding = Instance.new("UIPadding")
-    Padding.Parent = Page
-    Padding.PaddingTop = UDim.new(0, 10)
-    Padding.PaddingLeft = UDim.new(0, 15)
-    Padding.PaddingRight = UDim.new(0, 15)
-
-    local PageListLayout = Instance.new("UIListLayout")
-    PageListLayout.Parent = Page
-    PageListLayout.Padding = UDim.new(0, 10)
-    PageListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-
-    -- // Switch Tab
-    TabButton.MouseButton1Click:Connect(function()
-        if CurrentTab then
-            CurrentTab.TextColor3 = UISettings.LightText
-            CurrentTab.SelectedTab.Visible = false
-            CurrentTab:FindFirstChild("SelectedTab").Size = UDim2.new(0, 0, 0, 3)
-            CurrentTab.Parent:FindFirstChild(CurrentTab.Name:gsub("Tab", "Page")).Visible = false
-        end
-
-        CurrentTab = TabButton
-        TabButton.TextColor3 = UISettings.AccentColor
-        TabButton.SelectedTab.Visible = true
-        TabButton.SelectedTab:TweenSize(UDim2.new(1, 0, 0, 3), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.3)
-        Page.Visible = true
-    end)
-
-    table.insert(Tabs, {
-        Button = TabButton,
-        Page = Page
-    })
-
-    return Page
-end
-
--- // Save & Load System
-local ConfigFolder = "FlashLightHub"
-local ConfigFile = ConfigFolder .. "/" .. PlayerName .. ".json"
-
-local DefaultSettings = {
-    WindowSize = {X = 500, Y = 300},
-    Theme = "LightBlue",
-    AutoLoad = true
-}
-
-local Settings = {}
-
-local function SaveConfig()
-    if not isfolder then return warn("Executor not supported") end
-    if not isfolder(ConfigFolder) then makefolder(ConfigFolder) end
-
-    for i, v in pairs(DefaultSettings) do
-        if Settings[i] == nil then
-            Settings[i] = v
-        end
-    end
-
-    writefile(ConfigFile, HttpService:JSONEncode(Settings))
-    print("⚙️ Flash Light Hub: Config saved!")
-end
-
-local function LoadConfig()
-    if not isfolder or not readfile then return warn("Executor not supported") end
-    if isfile(ConfigFile) then
-        local data = HttpService:JSONDecode(readfile(ConfigFile))
-        Settings = data
-        print("✅ Flash Light Hub: Config loaded!")
-    else
-        Settings = DefaultSettings
-        SaveConfig()
-    end
-end
-
-LoadConfig()
-
--- // Example Tabs & Buttons
-local MainTab = CreateTab("Home")
-local AutoTab = CreateTab("Auto Farm")
-local MiscTab = CreateTab("Misc")
-
--- // Auto-Select First Tab
-spawn(function()
-    wait(0.5)
-    TabsFrame:WaitForChild("HomeTab").MouseButton1Click:Fire()
-end)
-
--- // Button Creator Function
-function CreateButton(parent, text, callback)
-    local Button = Instance.new("TextButton")
-    Button.Parent = parent
-    Button.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
-    Button.BorderSizePixel = 0
-    Button.Size = UDim2.new(1, 0, 0, 40)
-    Button.Text = text
-    Button.TextColor3 = UISettings.LightText
-    Button.TextSize = UISettings.TextSize + 2
-    Button.Font = UISettings.Font
-    Button.AutoButtonColor = false
-
-    CreateRounded(Button, 6)
-
-    Button.MouseEnter:Connect(function()
-        Button.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
-    end)
-
-    Button.MouseLeave:Connect(function()
-        Button.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
-    end)
-
-    Button.MouseButton1Click:Connect(function()
-        Button.BackgroundColor3 = UISettings.AccentColor
-        task.wait(0.1)
-        Button.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
-        pcall(callback)
-    end)
-end
-
--- // Example Buttons
-CreateButton(MainTab, "Welcome to Flash Light Hub!", function()
-    print("Hello " .. PlayerName .. "!")
-end)
-
-CreateButton(AutoTab, "Auto Buy Common Chest", function()
-    local running = not running
-    if running then
-        while running and task.wait(3) do
-            local args = {"Common Chest", 1}
+    while autoBuyEnabled and task.wait(3) do
+        local args = {"PlasticBlock", 1}
+        pcall(function()
             Workspace:WaitForChild("ItemBoughtFromShop"):InvokeServer(unpack(args))
-        end
+        end)
     end
 end)
 
-CreateButton(MiscTab, "Open Infinite Yield", function()
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"))()
+Auto:Seperator("Auto Farm")
+
+local autoFarmEnabled = false
+Auto:Toggle("Auto Farm Chests", false, "Buys and farms common chests", function(v)
+    autoFarmEnabled = v
+
+    while autoFarmEnabled and task.wait(3) do
+        local args = {"Common Chest", 1}
+        pcall(function()
+            Workspace:WaitForChild("ItemBoughtFromShop"):InvokeServer(unpack(args))
+        end)
+    end
 end)
 
-CreateButton(MiscTab, "Destroy GUI", function()
-    ScreenGui:Destroy()
-end)
+------------------------------------------------------------------
+-- 5. TELEPORT TAB - PLATFORM TELEPORTER
+------------------------------------------------------------------
+Teleport:Seperator("Platform Teleporter")
 
--- // Finalize
-print("✨ Flash Light Hub Loaded Successfully!")
-print("📁 Config: " .. ConfigFile)
-
--- // Allow future additions
--- You can now send more scripts (e.g. auto-farm, teleport, quest complete)
--- I will integrate them into new tabs/buttons
-
-return {
-    CreateTab = CreateTab,
-    CreateButton = CreateButton,
-    Save = SaveConfig,
-    Load = LoadConfig,
-    Settings = Settings,
-    ScreenGui = ScreenGui
+local isRunning = false
+local spawnedPlatforms = {}
+local positions = {
+    Vector3.new(-62, 67, 1363),
+    Vector3.new(-65, 58, 2135),
+    Vector3.new(-52, 73, 2903),
+    Vector3.new(-58, 76, 3672),
+    Vector3.new(-60, 80, 4445),
+    Vector3.new(-55, 73, 5217),
+    Vector3.new(-53, 64, 5984),
+    Vector3.new(-63, 63, 6751),
+    Vector3.new(-50, 28, 7527),
+    Vector3.new(-104, 37, 8298),
+    Vector3.new(-57, -358, 9491)
 }
+
+local function removePlatforms()
+    for _, p in ipairs(spawnedPlatforms) do
+        if p and p.Parent then p:Destroy() end
+    end
+    table.clear(spawnedPlatforms)
+
+    -- Clean up any leftover in workspace
+    for _, obj in ipairs(Workspace:GetChildren()) do
+        if obj:IsA("Part") and obj.Name == "TeleportPlatform" then
+            obj:Destroy()
+        end
+    end
+end
+
+local function placePlatform(pos)
+    for _, part in ipairs(spawnedPlatforms) do
+        if part and part.Parent and (part.Position - Vector3.new(pos.X, pos.Y - 3, pos.Z)).Magnitude < 0.1 then
+            return -- already exists
+        end
+    end
+
+    local platform = Instance.new("Part")
+    platform.Size = Vector3.new(10, 1, 10)
+    platform.Position = Vector3.new(pos.X, pos.Y - 3, pos.Z)
+    platform.Anchored = true
+    platform.CanCollide = true
+    platform.Material = Enum.Material.SmoothPlastic
+    platform.BrickColor = BrickColor.new("Bright yellow")
+    platform.Name = "TeleportPlatform"
+    platform.Parent = Workspace
+
+    local surfaceGui = Instance.new("SurfaceGui")
+    surfaceGui.Face = Enum.NormalId.Top
+    surfaceGui.Adornee = platform
+    surfaceGui.Parent = platform
+
+    local textLabel = Instance.new("TextLabel")
+    textLabel.Size = UDim2.new(1, 0, 1, 0)
+    textLabel.BackgroundTransparency = 1
+    textLabel.Text = "Teleport Platform"
+    textLabel.TextColor3 = Color3.new(0, 0, 0)
+    textLabel.TextScaled = true
+    textLabel.Font = Enum.Font.SourceSansBold
+    textLabel.Parent = surfaceGui
+
+    table.insert(spawnedPlatforms, platform)
+end
+
+Teleport:Toggle("Auto Teleport Loop", false, "Spawns platforms and teleports through levels", function(v)
+    isRunning = v
+
+    if isRunning then
+        while isRunning and task.wait(1) do
+            local hrp = char:FindFirstChild("HumanoidRootPart")
+            if not hrp then continue end
+
+            for _, pos in ipairs(positions) do
+                if not isRunning then break end
+                placePlatform(pos)
+                hrp.CFrame = CFrame.new(pos)
+                task.wait(2)
+            end
+            task.wait(16)
+        end
+    end
+
+    removePlatforms()
+end)
+
+------------------------------------------------------------------
+-- 6. QUESTS TAB - AUTO QUEST & TOUCH
+------------------------------------------------------------------
+Quests:Seperator("Auto Quest System")
+
+-- Map team colors to cloud paths
+local brickColorToCloud = {
+    ["Really red"] = function() return Workspace["Really redZone"].Quest.Ramp:GetChildren()[20] end,
+    ["Magenta"] = function() return Workspace["MagentaZone"].Quest.Ramp:GetChildren()[20] end,
+    ["Camo"] = function() return Workspace["CamoZone"].Quest.Ramp:GetChildren()[20] end,
+    ["Really blue"] = function() return Workspace["Really blueZone"].Quest.Ramp:GetChildren()[20] end,
+    ["White"] = function() return Workspace["WhiteZone"].Quest.Ramp:GetChildren()[20] end,
+    ["Black"] = function() return Workspace["BlackZone"].Quest.Ramp:GetChildren()[20] end,
+    ["New Yeller"] = function() return Workspace["New YellerZone"].Quest.Ramp:GetChildren()[20] end
+}
+
+-- Map team colors to touch interests
+local brickColorToTouchInterest = {
+    ["Really red"] = function() return Workspace["Really redZone"].Quest.Ramp:GetChildren()[20]:FindFirstChildOfClass("TouchTransmitter") or Workspace["Really redZone"].Quest.Ramp:GetChildren()[20]:FindFirstChild("TouchInterest") end,
+    ["Magenta"] = function() return Workspace["MagentaZone"].Quest.Ramp:GetChildren()[20]:FindFirstChildOfClass("TouchTransmitter") or Workspace["MagentaZone"].Quest.Ramp:GetChildren()[20]:FindFirstChild("TouchInterest") end,
+    ["Camo"] = function() return Workspace["CamoZone"].Quest.Ramp:GetChildren()[20]:FindFirstChildOfClass("TouchTransmitter") or Workspace["CamoZone"].Quest.Ramp:GetChildren()[20]:FindFirstChild("TouchInterest") end,
+    ["Really blue"] = function() return Workspace["Really blueZone"].Quest.Ramp:GetChildren()[20]:FindFirstChildOfClass("TouchTransmitter") or Workspace["Really blueZone"].Quest.Ramp:GetChildren()[20]:FindFirstChild("TouchInterest") end,
+    ["White"] = function() return Workspace["WhiteZone"].Quest.Ramp:GetChildren()[20]:FindFirstChildOfClass("TouchTransmitter") or Workspace["WhiteZone"].Quest.Ramp:GetChildren()[20]:FindFirstChild("TouchInterest") end,
+    ["Black"] = function() return Workspace["BlackZone"].Quest.Ramp:GetChildren()[20]:FindFirstChildOfClass("TouchTransmitter") or Workspace["BlackZone"].Quest.Ramp:GetChildren()[20]:FindFirstChild("TouchInterest") end,
+    ["New Yeller"] = function() return Workspace["New YellerZone"].Quest.Ramp:GetChildren()[20]:FindFirstChildOfClass("TouchTransmitter") or Workspace["New YellerZone"].Quest.Ramp:GetChildren()[20]:FindFirstChild("TouchInterest") end
+}
+
+local function startQuest()
+    local args = { 3 } -- Quest ID
+    pcall(function()
+        Workspace:WaitForChild("QuestMakerEvent"):FireServer(unpack(args))
+    end)
+end
+
+local function simulateTouch()
+    local brickColorName = tostring(lp.Team.TeamColor)
+    local touchInterestGetter = brickColorToTouchInterest[brickColorName]
+    if not touchInterestGetter then warn("No TouchInterest for", brickColorName) return end
+
+    local touchInterest = touchInterestGetter()
+    if not touchInterest then warn("TouchInterest not found") return end
+
+    local part = touchInterest:IsA("TouchTransmitter") and touchInterest.Parent or touchInterest
+    firetouchinterest(char.HumanoidRootPart, part, 0)
+    task.wait(0.1)
+    firetouchinterest(char.HumanoidRootPart, part, 1)
+    print("✅ Touched for team:", brickColorName)
+end
+
+Quests:Button("Start Quest + Touch", function()
+    startQuest()
+    Stellar:Notify("Quest started!", 2)
+    task.delay(0.5, simulateTouch)
+end)
+
+-- Butter Click Detector
+local function getButterClickDetector()
+    local zoneMap = {
+        ["New Yeller"] = "New YellerZone",
+        ["Really red"] = "Really redZone",
+        ["Magenta"] = "MagentaZone",
+        ["Camo"] = "CamoZone",
+        ["Really blue"] = "Really blueZone",
+        ["White"] = "WhiteZone",
+        ["Black"] = "BlackZone"
+    }
+    local zoneName = zoneMap[tostring(lp.Team.TeamColor)]
+    if not zoneName then return end
+
+    local zone = Workspace:FindFirstChild(zoneName)
+    if not zone then return end
+
+    local quest = zone:FindFirstChild("Quest")
+    if not quest then return end
+
+    local butter = quest:FindFirstChild("Butter")
+    if not butter then return end
+
+    local ppart = butter:FindFirstChild("PPart")
+    if not ppart then return end
+
+    return ppart:FindFirstChildOfClass("ClickDetector")
+end
+
+Quests:Button("Click Butter", function()
+    local cd = getButterClickDetector()
+    if cd then
+        fireclickdetector(cd)
+        Stellar:Notify("Butter clicked!", 2)
+    else
+        Stellar:Notify("Butter not found!", 3)
+    end
+end)
+
+------------------------------------------------------------------
+-- 7. MISC TAB
+------------------------------------------------------------------
+Misc:Seperator("Tools")
+
+Misc:Button("Unlock Gamepasses", function()
+    -- Simulate buying a gamepass
+    pcall(function()
+        Workspace:WaitForChild("ItemBoughtFromShop"):InvokeServer("GamepassItem", 1)
+        Stellar:Notify("Gamepasses unlocked!", 3)
+    end)
+end)
+
+Misc:Button("Open Infinite Yield", function()
+    task.spawn(function()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"))()
+        Stellar:Notify("Infinite Yield loaded!", 3)
+    end)
+end)
+
+Misc:Button("Unload Hub", function()
+    local stellarGui = game.CoreGui:FindFirstChild("STELLAR")
+    if stellarGui then stellarGui:Destroy() end
+    local mobileBtn = game.CoreGui:FindFirstChild("FlashlightMobileToggle")
+    if mobileBtn then mobileBtn:Destroy() end
+    print("✅ Flash Light Hub unloaded.")
+end)
+
+------------------------------------------------------------------
+-- 8. MOBILE TOGGLE BUTTON
+------------------------------------------------------------------
+local MobileGui = Instance.new("ScreenGui")
+MobileGui.Name = "FlashlightMobileToggle"
+MobileGui.ResetOnSpawn = false
+MobileGui.Parent = game.CoreGui
+
+local ToggleBtn = Instance.new("ImageButton")
+ToggleBtn.Size = UDim2.new(0, 55, 0, 55)
+ToggleBtn.Position = UDim2.new(0.15, 0, 0.75, 0)
+ToggleBtn.AnchorPoint = Vector2.new(0.5, 0.5)
+ToggleBtn.BackgroundTransparency = 1
+ToggleBtn.Image = "rbxassetid://3926307971"
+ToggleBtn.ImageColor3 = Color3.fromRGB(255, 255, 255)
+ToggleBtn.ImageTransparency = 0.2
+ToggleBtn.Parent = MobileGui
+
+local Icon = Instance.new("ImageLabel")
+Icon.Size = UDim2.new(0, 30, 0, 30)
+Icon.Position = UDim2.new(0.5, 0, 0.5, 0)
+Icon.AnchorPoint = Vector2.new(0.5, 0.5)
+Icon.BackgroundTransparency = 1
+Icon.Image = "rbxassetid://10734950020"
+Icon.ImageColor3 = Color3.fromRGB(0, 0, 0)
+Icon.Parent = ToggleBtn
+
+-- Drag & Toggle Logic
+local dragging = false
+local startPos, startMouse
+
+ToggleBtn.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        startPos = ToggleBtn.Position
+        startMouse = input.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    elseif input.UserInputType == Enum.UserInputType.MouseButton1 then
+        local hub = game.CoreGui:FindFirstChild("STELLAR")
+        if hub then hub.Enabled = not hub.Enabled end
+    end
+end)
+
+UIS.InputChanged:Connect(function(input)
+    if dragging and input.UserInputType == Enum.UserInputType.Touch then
+        local delta = input.Position - startMouse
+        ToggleBtn.Position = UDim2.new(
+            startPos.X.Scale, startPos.X.Offset + delta.X,
+            startPos.Y.Scale, startPos.Y.Offset + delta.Y
+        )
+    end
+end)
+
+print("✨ Flash Light Hub Loaded! Use Insert key or mobile button to toggle.")
