@@ -1,23 +1,13 @@
-local Stellar = loadstring(game:HttpGet("https://raw.githubusercontent.com/x2zu/OPEN-SOURCE-UI-ROBLOX/refs/heads/main/X2ZU%20UI%20ROBLOX%20OPEN%20SOURCE/NewUiStellar.lua"))()
+local x2zuLibrary = loadstring(game:HttpGet("https://raw.githubusercontent.com/x2zu/OPEN-SOURCE-UI-ROBLOX/refs/heads/main/X2ZU%20UI%20ROBLOX%20OPEN%20SOURCE/NewUiStellar.lua"))()
 
-if Stellar:LoadAnimation() then
-    Stellar:StartLoad()
-    task.wait(2)
-    Stellar:Loaded()
-end
+local Window = x2zuLibrary:CreateWindow({Title = "FLASHLIGHT", SubTitle = "Blade Ball Edition"})
 
-local UserInputService = game:GetService("UserInputService")
-local Window = Stellar:Window({
-    Title = "FLASHLIGHT",
-    SubTitle = "Blade Ball Edition",
-    Size = UserInputService.TouchEnabled and UDim2.new(0, 380, 0, 260) or UDim2.new(0, 500, 0, 320),
-    TabWidth = 140
-})
+local MainTab = Window:AddTab({Title = "Main", Icon = "sword"})
+local VisualsTab = Window:AddTab({Title = "Visuals", Icon = "eye"})
+local FarmingTab = Window:AddTab({Title = "Farming", Icon = "wheat"})
+local MiscTab = Window:AddTab({Title = "Misc", Icon = "settings"})
 
-local MainTab = Window:Tab("Main", "rbxassetid://10723407389")
-local VisualsTab = Window:Tab("Visuals", "rbxassetid://10723415335")
-local FarmingTab = Window:Tab("Farming", "rbxassetid://10709782497")
-local MiscTab = Window:Tab("Misc", "rbxassetid://10734950309")
+local Options = x2zuLibrary.Options
 
 local Connections = {}
 
@@ -35,12 +25,10 @@ local AutoPlayEnabled = false
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
-local VirtualInputManager = game:GetService("VirtualInputManager")
 local UserInputService = game:GetService("UserInputService")
+local VirtualInputManager = game:GetService("VirtualInputManager")
 local Lighting = game:GetService("Lighting")
-local Debris = game:GetService("Debris")
 
 local Player = Players.LocalPlayer
 
@@ -77,7 +65,7 @@ do
     for Index, Value in pairs(getconnections(Players.LocalPlayer.PlayerGui.Hotbar.Block.Activated)) do
         if Value and Value.Function and not iscclosure(Value.Function) then
             for Index2, Value2 in pairs(getupvalues(Value.Function)) do
-                if type(IValue2) == "function" then
+                if type(Value2) == "function" then
                     Parry_Key = getupvalue(getupvalue(Value2, 2), 17)
                 end
             end
@@ -126,22 +114,18 @@ function Auto_Parry.Parry_Data(Parry_Type)
         Backwards_Direction = Vector3.new(Backwards_Direction.X, 0, Backwards_Direction.Z)
         return {0, CFrame.new(Camera.CFrame.Position, Camera.CFrame.Position + Backwards_Direction), Events, Vector2_Mouse_Location}
     elseif Parry_Type == 'Straight' then
-        local Closest_Entity = nil
-        local Max_Distance = math.huge
-        for _, Entity in pairs(Workspace.Alive:GetChildren()) do
-            if Entity ~= Player.Character and Entity.PrimaryPart then
-                local Distance = (Player.Character.PrimaryPart.Position - Entity.PrimaryPart.Position).Magnitude
-                if Distance < Max_Distance then
-                    Max_Distance = Distance
-                    Closest_Entity = Entity
+        local Closest = nil
+        local MinDist = math.huge
+        for _, v in pairs(Workspace.Alive:GetChildren()) do
+            if v ~= Player.Character then
+                local Dist = (Player.Character.PrimaryPart.Position - v.PrimaryPart.Position).Magnitude
+                if Dist < MinDist then
+                    MinDist = Dist
+                    Closest = v
                 end
             end
         end
-        if Closest_Entity then
-            return {0, CFrame.new(Player.Character.PrimaryPart.Position, Closest_Entity.PrimaryPart.Position), Events, Vector2_Mouse_Location}
-        else
-            return {0, Camera.CFrame, Events, Vector2_Mouse_Location}
-        end
+        return {0, CFrame.new(Player.Character.PrimaryPart.Position, Closest and Closest.PrimaryPart.Position or Camera.CFrame.Position), Events, Vector2_Mouse_Location}
     elseif Parry_Type == 'Random' then
         return {0, CFrame.new(Camera.CFrame.Position, Vector3.new(math.random(-4000, 4000), math.random(-4000, 4000), math.random(-4000, 4000))), Events, Vector2_Mouse_Location}
     elseif Parry_Type == 'Left' then
@@ -165,7 +149,8 @@ function Auto_Parry.Parry_Data(Parry_Type)
         end
         if #candidates > 0 then
             local pick = candidates[math.random(1, #candidates)]
-            return {0, CFrame.new(Player.Character.PrimaryPart.Position, pick.character.PrimaryPart.Position), Events, pick.screenXY}
+            local lookCFrame = CFrame.new(Player.Character.PrimaryPart.Position, pick.character.PrimaryPart.Position)
+            return {0, lookCFrame, Events, pick.screenXY}
         else
             return {0, Camera.CFrame, Events, {Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2}}
         end
@@ -174,135 +159,226 @@ end
 
 function Auto_Parry.Parry(Parry_Type)
     local Data = Auto_Parry.Parry_Data(Parry_Type)
-    task.wait(PredictionMS / 1000)
-    Parry(Data[1], Data[2], Data[3], Data[4])
+    if Data then
+        task.wait(PredictionMS / 1000)
+        Parry(Data[1], Data[2], Data[3], Data[4])
+    end
 end
 
-MainTab:Seperator("Parry Options")
+local MainSection = MainTab:AddSection({Title = "Parry Controls"})
 
-MainTab:Toggle("Auto Parry", nil, function(Value)
-    AutoParryEnabled = Value
-    for _, conn in pairs(Connections) do
-        if conn.label == "AutoParry" then
-            conn:Disconnect()
-        end
-    end
-    if Value then
-        local conn = RunService.RenderStepped:Connect(function()
-            if not AutoParryEnabled then return end
-            local Ball = Auto_Parry.Get_Ball()
-            if Ball and Player.Character and Player.Character.PrimaryPart then
-                local distance = (Player.Character.PrimaryPart.Position - Ball.Position).Magnitude
-                if distance <= 20 then
+MainSection:AddToggle("AutoParry", {
+    Title = "Auto Parry",
+    Default = false,
+    Callback = function(Value)
+        AutoParryEnabled = Value
+        if Value then
+            table.insert(Connections, RunService.RenderStepped:Connect(function()
+                if not AutoParryEnabled then return end
+                local Ball = Auto_Parry.Get_Ball()
+                if Ball and Player.Character and Player.Character.PrimaryPart and (Player.Character.PrimaryPart.Position - Ball.Position).Magnitude <= 20 then
                     Auto_Parry.Parry(SelectedParryDirection)
                 end
-            end
-        end)
-        conn.label = "AutoParry"
-        table.insert(Connections, conn)
-    end
-    Stellar:Notify("Auto Parry " .. (Value and "Enabled" or "Disabled"), 3)
-end)
-
-MainTab:Toggle("Spam Parry", nil, function(Value)
-    SpamParryEnabled = Value
-    for _, conn in pairs(Connections) do
-        if conn.label == "SpamParry" then
-            conn:Disconnect()
+            end))
         end
     end
-    if Value then
-        local conn = RunService.RenderStepped:Connect(function()
-            if not SpamParryEnabled then return end
-            Auto_Parry.Parry(SelectedParryDirection)
-        end)
-        conn.label = "SpamParry"
-        table.insert(Connections, conn)
-    end
-    Stellar:Notify("Spam Parry " .. (Value and "Enabled" or "Disabled"), 3)
-end)
+})
 
-MainTab:Dropdown("Parry Direction", {"Camera", "Straight", "Backwards", "Left", "Right", "Random", "RandomTarget"}, "Camera", function(Option)
-    SelectedParryDirection = Option
-    Stellar:Notify("Parry Direction set to " .. Option, 3)
-end)
-
-MainTab:Slider("Prediction (ms)", 0, 150, 0, function(Value)
-    PredictionMS = Value
-    Stellar:Notify("Prediction set to " .. Value .. "ms", 3)
-end)
-
-VisualsTab:Seperator("Visual Options")
-
-VisualsTab:Toggle("Ball ESP", nil, function(Value)
-    BallESPEnabled = Value
-    for _, conn in pairs(Connections) do
-        if conn.label == "BallESP" then
-            conn:Disconnect()
+MainSection:AddToggle("SpamParry", {
+    Title = "Spam Parry",
+    Default = false,
+    Callback = function(Value)
+        SpamParryEnabled = Value
+        if Value then
+            table.insert(Connections, RunService.RenderStepped:Connect(function()
+                if not SpamParryEnabled then return end
+                Auto_Parry.Parry(SelectedParryDirection)
+            end))
         end
     end
-    if Value then
-        local conn = RunService.RenderStepped:Connect(function()
-            if not BallESPEnabled then return end
-            local Ball = Auto_Parry.Get_Ball()
-            if Ball then
-                local ESP = Ball:FindFirstChild("ESP") or Instance.new("Highlight", Ball)
-                ESP.Name = "ESP"
-                ESP.FillColor = Color3.fromRGB(255, 0, 0)
-                ESP.OutlineColor = Color3.fromRGB(255, 255, 255)
-                ESP.Enabled = true
+})
+
+MainSection:AddDropdown("ParryDirection", {
+    Title = "Parry Direction",
+    Values = {"Camera", "Straight", "Backwards", "Left", "Right", "Random", "RandomTarget"},
+    Default = "Camera",
+    Callback = function(Value)
+        SelectedParryDirection = Value
+    end
+})
+
+MainSection:AddSlider("Prediction", {
+    Title = "Prediction (ms)",
+    Default = 0,
+    Min = 0,
+    Max = 150,
+    Rounding = 1,
+    Callback = function(Value)
+        PredictionMS = Value
+    end
+})
+
+local VisualsSection = VisualsTab:AddSection({Title = "Visual Enhancements"})
+
+VisualsSection:AddToggle("BallESP", {
+    Title = "Ball ESP",
+    Default = false,
+    Callback = function(Value)
+        BallESPEnabled = Value
+        if Value then
+            table.insert(Connections, RunService.RenderStepped:Connect(function()
+                if not BallESPEnabled then return end
+                local Ball = Auto_Parry.Get_Ball()
+                if Ball then
+                    local ESP = Ball:FindFirstChild("ESP") or Instance.new("Highlight", Ball)
+                    ESP.Name = "ESP"
+                    ESP.FillColor = Color3.fromRGB(255, 0, 0)
+                    ESP.OutlineColor = Color3.fromRGB(255, 255, 255)
+                    ESP.Enabled = true
+                end
+            end))
+        else
+            for _, Ball in pairs(Workspace.Balls:GetChildren()) do
+                if Ball:FindFirstChild("ESP") then
+                    Ball.ESP:Destroy()
+                end
             end
-        end)
-        conn.label = "BallESP"
-        table.insert(Connections, conn)
-    else
+        end
+    end
+})
+
+VisualsSection:AddToggle("RainbowTrail", {
+    Title = "Rainbow Trail",
+    Default = false,
+    Callback = function(Value)
+        RainbowTrailEnabled = Value
+        if Value then
+            table.insert(Connections, RunService.RenderStepped:Connect(function()
+                if not RainbowTrailEnabled then return end
+                local Ball = Auto_Parry.Get_Ball()
+                if Ball and not Ball:FindFirstChild("RainbowTrail") then
+                    local at1 = Instance.new("Attachment", Ball)
+                    local at2 = Instance.new("Attachment", Ball)
+                    at1.Position = Vector3.new(0, 0.5, 0)
+                    at2.Position = Vector3.new(0, -0.5, 0)
+                    local trail = Instance.new("Trail", Ball)
+                    trail.Name = "RainbowTrail"
+                    trail.Attachment0 = at1
+                    trail.Attachment1 = at2
+                    trail.Lifetime = 0.3
+                    trail.Color = ColorSequence.new({
+                        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),
+                        ColorSequenceKeypoint.new(0.16, Color3.fromRGB(255, 127, 0)),
+                        ColorSequenceKeypoint.new(0.32, Color3.fromRGB(255, 255, 0)),
+                        ColorSequenceKeypoint.new(0.48, Color3.fromRGB(0, 255, 0)),
+                        ColorSequenceKeypoint.new(0.64, Color3.fromRGB(0, 0, 255)),
+                        ColorSequenceKeypoint.new(0.80, Color3.fromRGB(75, 0, 130)),
+                        ColorSequenceKeypoint.new(1, Color3.fromRGB(148, 0, 211))
+                    })
+                end
+            end))
+        else
+            for _, Ball in pairs(Workspace.Balls:GetChildren()) do
+                if Ball:FindFirstChild("RainbowTrail") then
+                    Ball.RainbowTrail:Destroy()
+                end
+                for _, att in pairs(Ball:GetChildren()) do
+                    if att:IsA("Attachment") then att:Destroy() end
+                end
+            end
+        end
+    end
+})
+
+VisualsSection:AddToggle("ViewBall", {
+    Title = "View Ball",
+    Default = false,
+    Callback = function(Value)
+        ViewBallEnabled = Value
+        if Value then
+            table.insert(Connections, RunService.RenderStepped:Connect(function()
+                if not ViewBallEnabled then return end
+                local Ball = Auto_Parry.Get_Ball()
+                if Ball then
+                    Workspace.CurrentCamera.CFrame = CFrame.new(Workspace.CurrentCamera.CFrame.Position, Ball.Position)
+                end
+            end))
+        else
+            Workspace.CurrentCamera.CameraSubject = Player.Character and Player.Character.Humanoid or nil
+        end
+    end
+})
+
+VisualsSection:AddSlider("CameraFOV", {
+    Title = "Camera FOV",
+    Default = 70,
+    Min = 50,
+    Max = 120,
+    Rounding = 1,
+    Callback = function(Value)
+        CameraFOV = Value
+        Workspace.CurrentCamera.FieldOfView = Value
+    end
+})
+
+local FarmingSection = FarmingTab:AddSection({Title = "Automation"})
+
+FarmingSection:AddToggle("AutoPlay", {
+    Title = "Auto Play",
+    Default = false,
+    Callback = function(Value)
+        AutoPlayEnabled = Value
+        if Value then
+            table.insert(Connections, RunService.RenderStepped:Connect(function()
+                if not AutoPlayEnabled then return end
+                local Ball = Auto_Parry.Get_Ball()
+                if Ball and Player.Character and Player.Character.PrimaryPart then
+                    local dir = (Ball.Position - Player.Character.PrimaryPart.Position).Unit
+                    local dist = (Ball.Position - Player.Character.PrimaryPart.Position).Magnitude
+                    if dist > 30 then
+                        VirtualInputManager:SendKeyEvent(true, "W", false, game)
+                    else
+                        VirtualInputManager:SendKeyEvent(false, "W", false, game)
+                        local dodgeKey = math.random(1, 2) == 1 and "A" or "D"
+                        VirtualInputManager:SendKeyEvent(true, dodgeKey, false, game)
+                        task.wait(0.1)
+                        VirtualInputManager:SendKeyEvent(false, dodgeKey, false, game)
+                    end
+                end
+            end))
+        else
+            for _, key in pairs({"W", "A", "D"}) do
+                VirtualInputManager:SendKeyEvent(false, key, false, game)
+            end
+        end
+    end
+})
+
+local MiscSection = MiscTab:AddSection({Title = "Miscellaneous"})
+
+MiscSection:AddButton({
+    Title = "Copy Discord",
+    Callback = function()
+        setclipboard("https://discord.gg/flashlighthub")
+        x2zuLibrary:Notify({
+            Title = "Success",
+            Content = "Copied Discord link!",
+            Duration = 3
+        })
+    end
+})
+
+MiscSection:AddButton({
+    Title = "Unload Script",
+    Callback = function()
+        for _, conn in pairs(Connections) do
+            conn:Disconnect()
+        end
+        Connections = {}
         for _, Ball in pairs(Workspace.Balls:GetChildren()) do
             if Ball:FindFirstChild("ESP") then
                 Ball.ESP:Destroy()
             end
-        end
-    end
-    Stellar:Notify("Ball ESP " .. (Value and "Enabled" or "Disabled"), 3)
-end)
-
-VisualsTab:Toggle("Rainbow Trail", nil, function(Value)
-    RainbowTrailEnabled = Value
-    for _, conn in pairs(Connections) do
-        if conn.label == "RainbowTrail" then
-            conn:Disconnect()
-        end
-    end
-    if Value then
-        local conn = RunService.RenderStepped:Connect(function()
-            if not RainbowTrailEnabled then return end
-            local Ball = Auto_Parry.Get_Ball()
-            if Ball and not Ball:FindFirstChild("RainbowTrail") then
-                local at1 = Instance.new("Attachment", Ball)
-                local at2 = Instance.new("Attachment", Ball)
-                at1.Position = Vector3.new(0, 0.5, 0)
-                at2.Position = Vector3.new(0, -0.5, 0)
-                local trail = Instance.new("Trail", Ball)
-                trail.Name = "RainbowTrail"
-                trail.Attachment0 = at1
-                trail.Attachment1 = at2
-                trail.Lifetime = 0.3
-                trail.MinLength = 0.1
-                trail.WidthScale = NumberSequence.new(1)
-                trail.Color = ColorSequence.new({
-                    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),
-                    ColorSequenceKeypoint.new(0.16, Color3.fromRGB(255, 127, 0)),
-                    ColorSequenceKeypoint.new(0.32, Color3.fromRGB(255, 255, 0)),
-                    ColorSequenceKeypoint.new(0.48, Color3.fromRGB(0, 255, 0)),
-                    ColorSequenceKeypoint.new(0.64, Color3.fromRGB(0, 0, 255)),
-                    ColorSequenceKeypoint.new(0.80, Color3.fromRGB(75, 0, 130)),
-                    ColorSequenceKeypoint.new(1, Color3.fromRGB(148, 0, 211))
-                })
-            end
-        end)
-        conn.label = "RainbowTrail"
-        table.insert(Connections, conn)
-    else
-        for _, Ball in pairs(Workspace.Balls:GetChildren()) do
             if Ball:FindFirstChild("RainbowTrail") then
                 Ball.RainbowTrail:Destroy()
             end
@@ -310,121 +386,16 @@ VisualsTab:Toggle("Rainbow Trail", nil, function(Value)
                 if att:IsA("Attachment") then att:Destroy() end
             end
         end
-    end
-    Stellar:Notify("Rainbow Trail " .. (Value and "Enabled" or "Disabled"), 3)
-end)
-
-VisualsTab:Toggle("View Ball", nil, function(Value)
-    ViewBallEnabled = Value
-    for _, conn in pairs(Connections) do
-        if conn.label == "ViewBall" then
-            conn:Disconnect()
-        end
-    end
-    if Value then
-        local conn = RunService.RenderStepped:Connect(function()
-            if not ViewBallEnabled then return end
-            local Ball = Auto_Parry.Get_Ball()
-            if Ball then
-                Workspace.CurrentCamera.CFrame = CFrame.new(Workspace.CurrentCamera.CFrame.Position, Ball.Position)
-            end
-        end)
-        conn.label = "ViewBall"
-        table.insert(Connections, conn)
-    else
+        Workspace.CurrentCamera.FieldOfView = 70
         Workspace.CurrentCamera.CameraSubject = Player.Character and Player.Character.Humanoid or nil
+        x2zuLibrary:Destroy()
     end
-    Stellar:Notify("View Ball " .. (Value and "Enabled" or "Disabled"), 3)
-end)
+})
 
-VisualsTab:Slider("Camera FOV", 50, 120, 70, function(Value)
-    CameraFOV = Value
-    for _, conn in pairs(Connections) do
-        if conn.label == "CameraFOV" then
-            conn:Disconnect()
-        end
-    end
-    local conn = RunService.RenderStepped:Connect(function()
-        Workspace.CurrentCamera.FieldOfView = CameraFOV
-    end)
-    conn.label = "CameraFOV"
-    table.insert(Connections, conn)
-    Stellar:Notify("Camera FOV set to " .. Value, 3)
-end)
-
-FarmingTab:Seperator("Farming Options")
-
-FarmingTab:Toggle("Auto Play", nil, function(Value)
-    AutoPlayEnabled = Value
-    for _, conn in pairs(Connections) do
-        if conn.label == "AutoPlay" then
-            conn:Disconnect()
-        end
-    end
-    if Value then
-        local conn = RunService.RenderStepped:Connect(function()
-            if not AutoPlayEnabled then return end
-            local Ball = Auto_Parry.Get_Ball()
-            if Ball and Player.Character and Player.Character.PrimaryPart then
-                local dir = (Ball.Position - Player.Character.PrimaryPart.Position).Unit
-                local dist = (Ball.Position - Player.Character.PrimaryPart.Position).Magnitude
-                local targetDistance = 30
-                for _, key in pairs({"W", "A", "S", "D"}) do
-                    VirtualInputManager:SendKeyEvent(false, key, false, game)
-                end
-                if dist > targetDistance + 5 then
-                    VirtualInputManager:SendKeyEvent(true, "W", false, game)
-                elseif Ball.Velocity.Magnitude > 120 then
-                    local dodgeKey = math.random(1, 2) == 1 and "A" or "D"
-                    VirtualInputManager:SendKeyEvent(true, dodgeKey, false, game)
-                end
-            end
-        end)
-        conn.label = "AutoPlay"
-        table.insert(Connections, conn)
-    else
-        for _, key in pairs({"W", "A", "S", "D"}) do
-            VirtualInputManager:SendKeyEvent(false, key, false, game)
-        end
-    end
-    Stellar:Notify("Auto Play " .. (Value and "Enabled" or "Disabled"), 3)
-end)
-
-MiscTab:Seperator("Miscellaneous")
-
-MiscTab:Button("Copy Discord", function()
-    setclipboard("https://discord.gg/flashlighthub")
-    Stellar:Notify("Discord link copied!", 3)
-end)
-
-MiscTab:Button("Unload Script", function()
-    for _, conn in pairs(Connections) do
-        conn:Disconnect()
-    end
-    Connections = {}
-    for _, Ball in pairs(Workspace.Balls:GetChildren()) do
-        if Ball:FindFirstChild("ESP") then
-            Ball.ESP:Destroy()
-        end
-        if Ball:FindFirstChild("RainbowTrail") then
-            Ball.RainbowTrail:Destroy()
-        end
-        for _, att in pairs(Ball:GetChildren()) do
-            if att:IsA("Attachment") then att:Destroy() end
-        end
-    end
-    Workspace.CurrentCamera.FieldOfView = 70
-    Workspace.CurrentCamera.CameraSubject = Player.Character and Player.Character.Humanoid or nil
-    local buttonGui = Player.PlayerGui:FindFirstChild("FlashlightButton")
-    if buttonGui then buttonGui:Destroy() end
-    Stellar:Destroy()
-    Stellar:Notify("Script unloaded!", 3)
-end)
-
-local ScreenGui = Instance.new("ScreenGui", Player.PlayerGui)
-ScreenGui.Name = "FlashlightButton"
-ScreenGui.ResetOnSpawn = false
+local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
+ScreenGui.Name = "FloatingButton"
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
 local OutlineButton = Instance.new("Frame", ScreenGui)
 OutlineButton.Name = "OutlineButton"
 OutlineButton.ClipsDescendants = true
@@ -432,25 +403,23 @@ OutlineButton.BackgroundColor3 = Color3.fromRGB(22, 22, 26)
 OutlineButton.Position = UDim2.new(0, 10, 0, 10)
 OutlineButton.Size = UDim2.new(0, 50, 0, 50)
 local Rounded = Instance.new("UICorner", OutlineButton)
-Rounded.CornerRadius = UDim.new(0, 12)
+Rounded.CornerRadius = UDim.new(0, 25)
+
 local ImageButton = Instance.new("ImageButton", OutlineButton)
 ImageButton.Position = UDim2.new(0.5, 0, 0.5, 0)
 ImageButton.Size = UDim2.new(0, 40, 0, 40)
 ImageButton.AnchorPoint = Vector2.new(0.5, 0.5)
-ImageButton.BackgroundColor3 = Color3.fromRGB(22, 22, 26)
-ImageButton.ImageColor3 = Color3.fromRGB(250, 250, 250)
+ImageButton.BackgroundTransparency = 1
 ImageButton.Image = "rbxassetid://10734950020"
+ImageButton.ImageColor3 = Color3.fromRGB(255, 255, 255)
 ImageButton.AutoButtonColor = false
-local RoundedImage = Instance.new("UICorner", ImageButton)
-RoundedImage.CornerRadius = UDim.new(0, 10)
 
 local function MakeDraggable(topbarobject, object)
     local Dragging, DragInput, DragStart, StartPosition
     local function Update(input)
         local Delta = input.Position - DragStart
         local pos = UDim2.new(StartPosition.X.Scale, StartPosition.X.Offset + Delta.X, StartPosition.Y.Scale, StartPosition.Y.Offset + Delta.Y)
-        local Tween = game:GetService("TweenService"):Create(object, TweenInfo.new(0.15), {Position = pos})
-        Tween:Play()
+        object.Position = pos
     end
     topbarobject.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -478,12 +447,18 @@ end
 
 MakeDraggable(ImageButton, OutlineButton)
 
-ImageButton.Activated:Connect(function()
-    local stellarGui = game.CoreGui:FindFirstChild("STELLAR")
-    if stellarGui then
-        stellarGui.Enabled = not stellarGui.Enabled
-        Stellar:Notify("GUI " .. (stellarGui.Enabled and "Shown" or "Hidden"), 3)
+ImageButton.MouseButton1Click:Connect(function()
+    local gui = game.CoreGui:FindFirstChild("x2zu")
+    if gui then
+        gui.Enabled = not gui.Enabled
     end
 end)
 
-Stellar:Notify("FLASHLIGHT Loaded!", 5)
+task.spawn(function()
+    wait(0.5)
+    x2zuLibrary:Notify({
+        Title = "FLASHLIGHT",
+        Content = "Loaded successfully!",
+        Duration = 5
+    })
+end)
