@@ -1,195 +1,332 @@
---[[
-    FLASHLIGHT HUB – Blade Ball (Fixed)
-    Built with STELLAR UI
---]]
+-- // Flash Light Hub - Starter Base
+-- // Based on STELLAR UI Lib & INPROGRESS Functional Scripts
+-- // Expandable, Saveable, Modern Design
 
-------------------------------------------------------------------
--- 0.  Library
-------------------------------------------------------------------
-local StellarLibrary = (loadstring(game:HttpGet("https://raw.githubusercontent.com/x2zu/OPEN-SOURCE-UI-ROBLOX/refs/heads/main/X2ZU%20UI%20ROBLOX%20OPEN%20SOURCE/NewUiStellar.lua"))())
+repeat wait() until game:IsLoaded()
+repeat wait() until game.Players.LocalPlayer and game.Players.LocalPlayer.Character
+wait(1)
 
-if StellarLibrary:LoadAnimation() then
-    StellarLibrary:StartLoad()
-    StellarLibrary:Loaded()
+-- // Services
+local Players = game:GetService("Players")
+local Player = Players.LocalPlayer
+local Workspace = game:GetService("Workspace")
+local TweenService = game:GetService("TweenInfo")
+local HttpService = game:GetService("HttpService")
+local CoreGui = game:GetService("CoreGui")
+
+-- // Player Data
+local PlayerName = Player.Name
+
+-- // UI Settings
+local UISettings = {
+    MainColor = Color3.fromRGB(100, 200, 255), -- Light blue/cyan
+    DarkColor = Color3.fromRGB(20, 20, 30),
+    LightText = Color3.fromRGB(240, 240, 240),
+    DarkText = Color3.fromRGB(100, 100, 100),
+    AccentColor = Color3.fromRGB(0, 180, 255),
+    BackgroundTransparency = 0.92,
+    Font = Enum.Font.FredokaOne,
+    TextSize = 14
+}
+
+-- // Config System (Load/Save)
+local Config = {
+    WindowSize = UDim2.new(0, 500, 0, 300),
+    TabWidth = UDim2.new(0, 150, 0, 30),
+    SaveSettings = true,
+    LoadAnimation = true
+}
+
+-- // Create Main ScreenGui
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "FlashLightHub"
+ScreenGui.Parent = CoreGui
+ScreenGui.ResetOnSpawn = false
+
+-- // Main Frame
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Parent = ScreenGui
+MainFrame.BackgroundColor3 = UISettings.DarkColor
+MainFrame.BorderSizePixel = 0
+MainFrame.Position = UDim2.new(0.5, -250, 0.5, -150)
+MainFrame.Size = Config.WindowSize
+MainFrame.ClipsDescendants = true
+
+-- // Rounded Corners
+local function CreateRounded(obj, radius)
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, radius)
+    corner.Parent = obj
 end
 
-------------------------------------------------------------------
--- 1.  Window
-------------------------------------------------------------------
-local Window = StellarLibrary:Window({
-    SubTitle = "Blade Ball Edition",
-    Size     = game:GetService("UserInputService").TouchEnabled
-               and UDim2.new(0, 380, 0, 260)
-               or  UDim2.new(0, 500, 0, 320),
-    TabWidth = 140
-})
+CreateRounded(MainFrame, 14)
 
-local Main    = Window:Tab("Main",    "rbxassetid://10723407389")
-local Visuals = Window:Tab("Visuals", "rbxassetid://10723415335")
-local Farming = Window:Tab("Farming", "rbxassetid://10709782497")
-local Misc    = Window:Tab("Misc",    "rbxassetid://10734950309")
+-- // UI Stroke (Glow Border)
+local UIStroke = Instance.new("UIStroke")
+UIStroke.Color = UISettings.AccentColor
+UIStroke.Transparency = 0.7
+UIStroke.Parent = MainFrame
 
-------------------------------------------------------------------
--- 2.  SERVICES
-------------------------------------------------------------------
-local Players   = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
-local UIS = game:GetService("UserInputService")
+-- // UI List Layout (Tabs)
+local UIListLayout = Instance.new("UIListLayout")
+UIListLayout.Parent = MainFrame
+UIListLayout.FillDirection = Enum.FillDirection.Horizontal
+UIListLayout.Padding = UDim.new(0, 10)
+UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 
-local lp = Players.LocalPlayer
+-- // Tab Holder
+local TabsFrame = Instance.new("Frame")
+TabsFrame.Name = "Tabs"
+TabsFrame.Parent = MainFrame
+TabsFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+TabsFrame.BorderSizePixel = 0
+TabsFrame.Size = UDim2.new(1, 0, 0, 40)
+TabsFrame.Position = UDim2.new(0, 0, 0, 0)
+CreateRounded(TabsFrame, 12)
+UIStroke.Clone().Parent = TabsFrame
 
-------------------------------------------------------------------
--- 3.  MAIN TAB
-------------------------------------------------------------------
-Main:Seperator("Combat")
+-- // Pages Frame
+local PagesFrame = Instance.new("Frame")
+PagesFrame.Name = "Pages"
+PagesFrame.Parent = MainFrame
+PagesFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+PagesFrame.BorderSizePixel = 0
+PagesFrame.Position = UDim2.new(0, 10, 0, 50)
+PagesFrame.Size = UDim2.new(1, -20, 1, -60)
+CreateRounded(PagesFrame, 10)
 
-Main:Toggle("Auto Parry", false, "Predicts & parries automatically", function(v)
-    _G.FL_AUTO_PARRY = v
-end)
+-- // Page Container (Scrolling)
+local PageContainer = Instance.new("ScrollingFrame")
+PageContainer.Name = "PageContainer"
+PageContainer.Parent = PagesFrame
+PageContainer.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+PageContainer.BorderSizePixel = 0
+PageContainer.Size = UDim2.new(1, 0, 1, 0)
+PageContainer.ScrollBarThickness = 6
+PageContainer.ScrollBarImageColor3 = UISettings.AccentColor
 
-Main:Toggle("Spam Parry", false, "Rapid-spams parry when close", function(v)
-    _G.FL_SPAM_PARRY = v
-end)
+-- // Add UIListLayout for Pages
+local PageLayout = Instance.new("UIListLayout")
+PageLayout.Parent = PageContainer
+PageLayout.Padding = UDim.new(0, 10)
+PageLayout.SortOrder = Enum.SortOrder.LayoutOrder
 
-Main:Dropdown("Parry Direction",
-    {"Camera","Straight","Backwards","Left","Right","Random","RandomTarget"},
-    "Camera",
-    function(v) _G.FL_PARRY_DIR = v end
-)
+-- // Drag Function
+local function MakeDraggable(ui, frame)
+    frame.Active = true
+    frame.Draggable = true
+end
 
-Main:Slider("Prediction (ms)", 0, 150, 75, function(v)
-    _G.FL_PREDICTION = v / 1000
-end)
+MakeDraggable(ScreenGui, MainFrame)
 
-------------------------------------------------------------------
--- 4.  VISUALS TAB
-------------------------------------------------------------------
-Visuals:Seperator("Ball")
+-- // Tab System
+local Tabs = {}
+local CurrentTab = nil
 
-Visuals:Toggle("Ball ESP", false, "Tracer & box on real ball", function(v)
-    _G.FL_BALL_ESP = v
-end)
+function CreateTab(tabName)
+    local TabButton = Instance.new("TextButton")
+    TabButton.Name = tabName .. "Tab"
+    TabButton.Parent = TabsFrame
+    TabButton.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+    TabButton.BorderSizePixel = 0
+    TabButton.Size = Config.TabWidth
+    TabButton.Text = tabName
+    TabButton.TextColor3 = UISettings.LightText
+    TabButton.TextSize = UISettings.TextSize
+    TabButton.Font = UISettings.Font
+    TabButton.AutoButtonColor = false
+    TabButton.ClipsDescendants = true
 
-Visuals:Toggle("Rainbow Trail", false, "Rainbow trail on ball", function(v)
-    _G.FL_RAINBOW_TRAIL = v
-end)
+    CreateRounded(TabButton, 8)
 
-Visuals:Toggle("View Ball", false, "Lock camera on ball", function(v)
-    _G.FL_VIEW_BALL = v
-end)
+    -- // Indicator Line
+    local Indicator = Instance.new("Frame")
+    Indicator.Name = "SelectedTab"
+    Indicator.Parent = TabButton
+    Indicator.BackgroundColor3 = UISettings.AccentColor
+    Indicator.BorderSizePixel = 0
+    Indicator.Position = UDim2.new(0, 0, 1, 0)
+    Indicator.Size = UDim2.new(0, 0, 0, 3)
+    Indicator.Visible = false
 
-Visuals:Slider("Camera FOV", 50, 120, 70, function(v)
-    workspace.CurrentCamera.FieldOfView = v
-end)
+    -- // Hover Effect
+    TabButton.MouseEnter:Connect(function()
+        if CurrentTab ~= TabButton then
+            TabButton.TextColor3 = UISettings.AccentColor
+        end
+    end)
 
-------------------------------------------------------------------
--- 5.  FARMING TAB
-------------------------------------------------------------------
-Farming:Seperator("AFK")
+    TabButton.MouseLeave:Connect(function()
+        if CurrentTab ~= TabButton then
+            TabButton.TextColor3 = UISettings.LightText
+        end
+    end)
 
-Farming:Toggle("Auto Play", false, "AFK wins", function(v)
-    _G.FL_AUTO_PLAY = v
-end)
+    -- // Page Frame
+    local Page = Instance.new("Frame")
+    Page.Name = tabName .. "Page"
+    Page.Parent = PageContainer
+    Page.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+    Page.BorderSizePixel = 0
+    Page.Size = UDim2.new(1, 0, 0, 250)
+    Page.Visible = false
+    CreateRounded(Page, 8)
 
-------------------------------------------------------------------
--- 6.  MISC TAB
-------------------------------------------------------------------
-Misc:Seperator("Utility")
+    -- // Add to layout
+    local Padding = Instance.new("UIPadding")
+    Padding.Parent = Page
+    Padding.PaddingTop = UDim.new(0, 10)
+    Padding.PaddingLeft = UDim.new(0, 15)
+    Padding.PaddingRight = UDim.new(0, 15)
 
-Misc:Button("Copy Discord", function()
-    setclipboard("https://discord.gg/flashlighthub")
-    StellarLibrary:Notify("Discord link copied!", 3)
-end)
+    local PageListLayout = Instance.new("UIListLayout")
+    PageListLayout.Parent = Page
+    PageListLayout.Padding = UDim.new(0, 10)
+    PageListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 
-Misc:Button("Unload Script", function()
-    local stellar = game.CoreGui:FindFirstChild("STELLAR")
-    if stellar then stellar:Destroy() end
-    local mobile = game.CoreGui:FindFirstChild("FlashlightMobileToggle")
-    if mobile then mobile:Destroy() end
-    StellarLibrary:Notify("Flashlight Hub unloaded.", 3)
-end)
+    -- // Switch Tab
+    TabButton.MouseButton1Click:Connect(function()
+        if CurrentTab then
+            CurrentTab.TextColor3 = UISettings.LightText
+            CurrentTab.SelectedTab.Visible = false
+            CurrentTab:FindFirstChild("SelectedTab").Size = UDim2.new(0, 0, 0, 3)
+            CurrentTab.Parent:FindFirstChild(CurrentTab.Name:gsub("Tab", "Page")).Visible = false
+        end
 
-------------------------------------------------------------------
--- 7.  MOBILE TOGGLE BUTTON
-------------------------------------------------------------------
-local mb = Instance.new("ScreenGui")
-mb.Name = "FlashlightMobileToggle"
-mb.ResetOnSpawn = false
-mb.Parent = game:GetService("CoreGui")
+        CurrentTab = TabButton
+        TabButton.TextColor3 = UISettings.AccentColor
+        TabButton.SelectedTab.Visible = true
+        TabButton.SelectedTab:TweenSize(UDim2.new(1, 0, 0, 3), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.3)
+        Page.Visible = true
+    end)
 
-local btn = Instance.new("ImageButton")
-btn.Size = UDim2.new(0, 55, 0, 55)
-btn.AnchorPoint = Vector2.new(0.5, 0.5)
-btn.Position = UDim2.new(0.15, 0, 0.75, 0)
-btn.BackgroundTransparency = 1
-btn.Image = "rbxassetid://3926307971"
-btn.ImageColor3 = Color3.fromRGB(255,255,255)
-btn.ImageTransparency = 0.2
-btn.Parent = mb
+    table.insert(Tabs, {
+        Button = TabButton,
+        Page = Page
+    })
 
-local icon = Instance.new("ImageLabel")
-icon.Size = UDim2.new(0, 30, 0, 30)
-icon.AnchorPoint = Vector2.new(0.5, 0.5)
-icon.Position = UDim2.new(0.5, 0, 0.5, 0)
-icon.BackgroundTransparency = 1
-icon.Image = "rbxassetid://10734950020"
-icon.ImageColor3 = Color3.fromRGB(0,0,0)
-icon.Parent = btn
+    return Page
+end
 
-local dragging, startPos, startMouse
-btn.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.Touch then
-        dragging = true
-        startPos  = btn.Position
-        startMouse = input.Position
-        input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then dragging = false end
-        end)
+-- // Save & Load System
+local ConfigFolder = "FlashLightHub"
+local ConfigFile = ConfigFolder .. "/" .. PlayerName .. ".json"
+
+local DefaultSettings = {
+    WindowSize = {X = 500, Y = 300},
+    Theme = "LightBlue",
+    AutoLoad = true
+}
+
+local Settings = {}
+
+local function SaveConfig()
+    if not isfolder then return warn("Executor not supported") end
+    if not isfolder(ConfigFolder) then makefolder(ConfigFolder) end
+
+    for i, v in pairs(DefaultSettings) do
+        if Settings[i] == nil then
+            Settings[i] = v
+        end
     end
-end)
 
-UIS.InputChanged:Connect(function(input)
-    if dragging and input.UserInputType == Enum.UserInputType.Touch then
-        local delta = input.Position - startMouse
-        btn.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X,
-                                 startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-    end
-end)
+    writefile(ConfigFile, HttpService:JSONEncode(Settings))
+    print("⚙️ Flash Light Hub: Config saved!")
+end
 
-btn.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.Touch and not dragging then
-        local hub = game.CoreGui:FindFirstChild("STELLAR")
-        if hub then hub.Enabled = not hub.Enabled end
-    end
-end)
-
-------------------------------------------------------------------
--- 8.  CORE LOOP – CORRECT REMOTES
-------------------------------------------------------------------
-local function getRealBall()
-    for _, b in ipairs(workspace:WaitForChild("Balls"):GetChildren()) do
-        if b:GetAttribute("realBall") then return b end
+local function LoadConfig()
+    if not isfolder or not readfile then return warn("Executor not supported") end
+    if isfile(ConfigFile) then
+        local data = HttpService:JSONDecode(readfile(ConfigFile))
+        Settings = data
+        print("✅ Flash Light Hub: Config loaded!")
+    else
+        Settings = DefaultSettings
+        SaveConfig()
     end
 end
 
-local parryRemote = ReplicatedStorage:WaitForChild("Remotes"):FindFirstChild("ParrySuccessAll") -- fallback
-if not parryRemote then
-    for _, r in pairs(ReplicatedStorage.Remotes:GetChildren()) do
-        if r.Name:match("Parry") then parryRemote = r break end
-    end
+LoadConfig()
+
+-- // Example Tabs & Buttons
+local MainTab = CreateTab("Home")
+local AutoTab = CreateTab("Auto Farm")
+local MiscTab = CreateTab("Misc")
+
+-- // Auto-Select First Tab
+spawn(function()
+    wait(0.5)
+    TabsFrame:WaitForChild("HomeTab").MouseButton1Click:Fire()
+end)
+
+-- // Button Creator Function
+function CreateButton(parent, text, callback)
+    local Button = Instance.new("TextButton")
+    Button.Parent = parent
+    Button.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+    Button.BorderSizePixel = 0
+    Button.Size = UDim2.new(1, 0, 0, 40)
+    Button.Text = text
+    Button.TextColor3 = UISettings.LightText
+    Button.TextSize = UISettings.TextSize + 2
+    Button.Font = UISettings.Font
+    Button.AutoButtonColor = false
+
+    CreateRounded(Button, 6)
+
+    Button.MouseEnter:Connect(function()
+        Button.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+    end)
+
+    Button.MouseLeave:Connect(function()
+        Button.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+    end)
+
+    Button.MouseButton1Click:Connect(function()
+        Button.BackgroundColor3 = UISettings.AccentColor
+        task.wait(0.1)
+        Button.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+        pcall(callback)
+    end)
 end
 
-RunService.PreSimulation:Connect(function()
-    if not _G.FL_AUTO_PARRY then return end
-    local ball = getRealBall()
-    if not ball then return end
-    local dist = (ball.Position - lp.Character.HumanoidRootPart.Position).Magnitude
-    if dist < 20 then
-        -- safest generic parry pattern
-        local args = {lp.Character.HumanoidRootPart.CFrame, false, false}
-        pcall(function() parryRemote:FireServer(unpack(args)) end)
+-- // Example Buttons
+CreateButton(MainTab, "Welcome to Flash Light Hub!", function()
+    print("Hello " .. PlayerName .. "!")
+end)
+
+CreateButton(AutoTab, "Auto Buy Common Chest", function()
+    local running = not running
+    if running then
+        while running and task.wait(3) do
+            local args = {"Common Chest", 1}
+            Workspace:WaitForChild("ItemBoughtFromShop"):InvokeServer(unpack(args))
+        end
     end
 end)
 
---[[  END OF FLASHLIGHT HUB  ]]--
+CreateButton(MiscTab, "Open Infinite Yield", function()
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"))()
+end)
+
+CreateButton(MiscTab, "Destroy GUI", function()
+    ScreenGui:Destroy()
+end)
+
+-- // Finalize
+print("✨ Flash Light Hub Loaded Successfully!")
+print("📁 Config: " .. ConfigFile)
+
+-- // Allow future additions
+-- You can now send more scripts (e.g. auto-farm, teleport, quest complete)
+-- I will integrate them into new tabs/buttons
+
+return {
+    CreateTab = CreateTab,
+    CreateButton = CreateButton,
+    Save = SaveConfig,
+    Load = LoadConfig,
+    Settings = Settings,
+    ScreenGui = ScreenGui
+}
