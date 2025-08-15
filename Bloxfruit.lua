@@ -1,53 +1,37 @@
 --[[
     🔦 FLASH LIGHT HUB – Blox Fruits
-    Powered by COMPKILLER UI (4lpaca)
-    Features: Auto Farm, Fruit ESP, Auto Store, Teleport, Auto Skills, Settings
+    Powered by x2zu's Stellar UI (DummyUI.lua)
+    Features: Auto Farm, Fruit, Raid, ESP, Settings, Mobile Toggle
 --]]
 
--- // Load Compkiller UI
-local Success, Compkiller = pcall(function()
-    return loadstring(game:HttpGet("https://raw.githubusercontent.com/4lpaca-pin/CompKiller/refs/heads/main/src/source.luau"))()
-end)
+-- // Load x2zu's Stellar UI
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/x2zu/OPEN-SOURCE-UI-ROBLOX/refs/heads/main/X2ZU%20UI%20ROBLOX%20OPEN%20SOURCE/DummyUI.lua"))()
 
-if not Success then
-    return warn("❌ Failed to load Compkiller UI")
-end
-
--- // Notification System
-local Notifier = Compkiller.newNotify()
-
--- // Config Manager
-local ConfigManager = Compkiller:ConfigManager({
-    Directory = "FlashLightHub",
-    Config = "BloxFruits_Config"
+-- // Create Main Window
+local Window = Library:Window({
+    Title = "FLASH LIGHT HUB",
+    Desc = "Blox Fruits Edition",
+    Icon = 105059922903197,
+    Theme = "Dark",
+    Config = {
+        Keybind = Enum.KeyCode.LeftControl,
+        Size = UDim2.new(0, 600, 0, 450)
+    },
+    CloseUIButton = {
+        Enabled = true,
+        Text = "x2zu"
+    }
 })
 
--- // Loader
-Compkiller:Loader("rbxassetid://120245531583106", 2.5).yield()
-
--- // Main Window
-local Window = Compkiller.new({
-    Name = "FLASH LIGHT HUB",
-    Keybind = "LeftAlt",
-    Logo = "rbxassetid://120245531583106",
-    Scale = Compkiller.Scale.Window,
-    TextSize = 15
-})
-
--- // Watermark
-local Watermark = Window:Watermark()
-Watermark:AddText({ Icon = "user", Text = "Flash Light" })
-Watermark:AddText({ Icon = "clock", Text = Compkiller:GetDate() })
-
-local TimeLabel = Watermark:AddText({ Icon = "timer", Text = "TIME" })
-task.spawn(function()
-    while true do
-        TimeLabel:SetText(Compkiller:GetTimeNow())
-        task.wait()
-    end
-end)
-
-Watermark:AddText({ Icon = "server", Text = Compkiller.Version })
+-- // Sidebar Vertical Separator
+local SidebarLine = Instance.new("Frame")
+SidebarLine.Size = UDim2.new(0, 1, 1, 0)
+SidebarLine.Position = UDim2.new(0, 140, 0, 0)
+SidebarLine.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+SidebarLine.BorderSizePixel = 0
+SidebarLine.ZIndex = 5
+SidebarLine.Name = "SidebarLine"
+SidebarLine.Parent = game:GetService("CoreGui")
 
 ------------------------------------------------------------------
 -- 2. SERVICES & PLAYER
@@ -107,21 +91,6 @@ _G.Settings = {
         ["ESP DevilFruit"] = false,
         ["ESP RealFruit"] = false
     },
-    SettingSea = {
-        ["Sea Gun Skill Z"] = true,
-        ["Sea Gun Skill X"] = true,
-        ["Sea Gun Skill C"] = true,
-        ["Sea Gun Skill V"] = true,
-        ["Sea Gun Skill F"] = false,
-        ["Skill Devil Fruit"] = false
-    },
-    Stats = {
-        ["Auto Add Melee Stats"] = false,
-        ["Auto Add Defense Stats"] = false,
-        ["Auto Add Sword Stats"] = false,
-        ["Auto Add Gun Stats"] = false,
-        ["Auto Add Fruit Stats"] = false
-    },
     Misc = {
         ["Hide Chat"] = false,
         ["Hide Leaderboard"] = false,
@@ -133,16 +102,16 @@ _G.Settings = {
 function SaveSetting()
     if readfile and writefile and isfile and isfolder then
         if not isfolder("FlashLightHub") then makefolder("FlashLightHub") end
-        if not isfolder("FlashLightHub/BloxFruits") then makefolder("FlashLightHub/BloxFruits") end
+        if not isfolder("FlashLightHub/Blox Fruits") then makefolder("FlashLightHub/Blox Fruits") end
 
-        local filePath = "FlashLightHub/BloxFruits/" .. lp.Name .. ".json"
+        local filePath = "FlashLightHub/Blox Fruits/" .. lp.Name .. ".json"
         writefile(filePath, HttpService:JSONEncode(_G.Settings))
     end
 end
 
 function LoadSetting()
     if readfile and writefile and isfile and isfolder then
-        local filePath = "FlashLightHub/BloxFruits/" .. lp.Name .. ".json"
+        local filePath = "FlashLightHub/Blox Fruits/" .. lp.Name .. ".json"
         if isfile(filePath) then
             local data = HttpService:JSONDecode(readfile(filePath))
             for i, v in pairs(data) do
@@ -157,88 +126,101 @@ LoadSetting()
 ------------------------------------------------------------------
 -- 4. TABS
 ------------------------------------------------------------------
-Window:DrawCategory({ Name = "Blox Fruits" })
-
-local MainTab = Window:DrawTab({
-    Name = "Main",
-    Icon = "home",
-    EnableScrolling = true
-})
-
-local FruitTab = Window:DrawTab({
-    Name = "Fruit",
-    Icon = "apple",
-    EnableScrolling = true
-})
-
-local RaidTab = Window:DrawTab({
-    Name = "Raid",
-    Icon = "shield",
-    EnableScrolling = true
-})
-
-local EspTab = Window:DrawTab({
-    Name = "ESP",
-    Icon = "eye",
-    EnableScrolling = true
-})
-
-local SettingsTab = Window:DrawTab({
-    Name = "Settings",
-    Icon = "settings-3",
-    Type = "Single",
-    EnableScrolling = true
-})
+local MainTab = Window:Tab({Title = "Main", Icon = "star"})
+local FruitTab = Window:Tab({Title = "Fruit", Icon = "apple"})
+local RaidTab = Window:Tab({Title = "Raid", Icon = "shield"})
+local EspTab = Window:Tab({Title = "ESP", Icon = "eye"})
+local SettingsTab = Window:Tab({Title = "Settings", Icon = "wrench"})
 
 ------------------------------------------------------------------
 -- 5. MAIN TAB
 ------------------------------------------------------------------
-MainTab:Seperator("Auto Farm")
+MainTab:Section({Title = "Auto Farm"})
 
-MainTab:Toggle("Auto Farm", _G.Settings.Main["Auto Farm"], "Auto farm mobs", function(v)
-    _G.Settings.Main["Auto Farm"] = v
-    SaveSetting()
-end)
+MainTab:Toggle({
+    Title = "Auto Farm",
+    Desc = "Auto farm mobs",
+    Value = _G.Settings.Main["Auto Farm"],
+    Callback = function(v)
+        _G.Settings.Main["Auto Farm"] = v
+        SaveSetting()
+    end
+})
 
-MainTab:Toggle("Auto Farm Fast", _G.Settings.Main["Auto Farm Fast"], "Fast auto farm", function(v)
-    _G.Settings.Main["Auto Farm Fast"] = v
-    SaveSetting()
-end)
+MainTab:Toggle({
+    Title = "Auto Farm Fast",
+    Desc = "Fast auto farm",
+    Value = _G.Settings.Main["Auto Farm Fast"],
+    Callback = function(v)
+        _G.Settings.Main["Auto Farm Fast"] = v
+        SaveSetting()
+    end
+})
 
-MainTab:Toggle("Auto Farm Boss", _G.Settings.Main["Auto Farm Boss"], "Farm boss only", function(v)
-    _G.Settings.Main["Auto Farm Boss"] = v
-    SaveSetting()
-end)
+MainTab:Toggle({
+    Title = "Auto Farm Boss",
+    Desc = "Farm boss only",
+    Value = _G.Settings.Main["Auto Farm Boss"],
+    Callback = function(v)
+        _G.Settings.Main["Auto Farm Boss"] = v
+        SaveSetting()
+    end
+})
 
-MainTab:Toggle("Auto Farm All Boss", _G.Settings.Main["Auto Farm All Boss"], "Farm all bosses", function(v)
-    _G.Settings.Main["Auto Farm All Boss"] = v
-    SaveSetting()
-end)
+MainTab:Toggle({
+    Title = "Auto Farm All Boss",
+    Desc = "Farm all bosses",
+    Value = _G.Settings.Main["Auto Farm All Boss"],
+    Callback = function(v)
+        _G.Settings.Main["Auto Farm All Boss"] = v
+        SaveSetting()
+    end
+})
 
-MainTab:Toggle("Auto Observation", _G.Settings.Main["Auto Observation"], "Auto Observation Mastery", function(v)
-    _G.Settings.Main["Auto Observation"] = v
-    SaveSetting()
-end)
+MainTab:Toggle({
+    Title = "Auto Observation",
+    Desc = "Auto Observation Mastery",
+    Value = _G.Settings.Main["Auto Observation"],
+    Callback = function(v)
+        _G.Settings.Main["Auto Observation"] = v
+        SaveSetting()
+    end
+})
 
-MainTab:Toggle("Auto Haki", _G.Settings.Main["Auto Haki"], "Auto use Haki", function(v)
-    _G.Settings.Main["Auto Haki"] = v
-    SaveSetting()
-end)
+MainTab:Toggle({
+    Title = "Auto Haki",
+    Desc = "Auto use Haki",
+    Value = _G.Settings.Main["Auto Haki"],
+    Callback = function(v)
+        _G.Settings.Main["Auto Haki"] = v
+        SaveSetting()
+    end
+})
 
-MainTab:Toggle("Auto Rejoin", _G.Settings.Main["Auto Rejoin"], "Rejoin on death", function(v)
-    _G.Settings.Main["Auto Rejoin"] = v
-    SaveSetting()
-end)
+MainTab:Toggle({
+    Title = "Auto Rejoin",
+    Desc = "Rejoin on death",
+    Value = _G.Settings.Main["Auto Rejoin"],
+    Callback = function(v)
+        _G.Settings.Main["Auto Rejoin"] = v
+        SaveSetting()
+    end
+})
 
 ------------------------------------------------------------------
 -- 6. FRUIT TAB
 ------------------------------------------------------------------
-FruitTab:Seperator("Devil Fruits")
+FruitTab:Section({Title = "Devil Fruits"})
 
-FruitTab:Toggle("Auto Buy Random Fruit", _G.Settings.Fruit["Auto Buy Random Fruit"], "Auto buy random fruit", function(v)
-    _G.Settings.Fruit["Auto Buy Random Fruit"] = v
-    SaveSetting()
-end)
+FruitTab:Toggle({
+    Title = "Auto Buy Random Fruit",
+    Desc = "Auto buy random fruit",
+    Value = _G.Settings.Fruit["Auto Buy Random Fruit"],
+    Callback = function(v)
+        _G.Settings.Fruit["Auto Buy Random Fruit"] = v
+        SaveSetting()
+    end
+})
 
 spawn(function()
     while task.wait(0.2) do
@@ -248,14 +230,22 @@ spawn(function()
     end
 end)
 
-FruitTab:Button("Random Fruit", function()
-    ReplicatedStorage.Remotes.CommF_:InvokeServer("Cousin", "Buy")
-end)
+FruitTab:Button({
+    Title = "Random Fruit",
+    Desc = "Buy one random fruit",
+    Callback = function()
+        ReplicatedStorage.Remotes.CommF_:InvokeServer("Cousin", "Buy")
+    end
+})
 
-FruitTab:Button("Open Devil Shop", function()
-    ReplicatedStorage.Remotes.CommF_:InvokeServer("GetFruits")
-    lp.PlayerGui.Main.FruitShop.Visible = true
-end)
+FruitTab:Button({
+    Title = "Open Devil Shop",
+    Desc = "Open fruit shop UI",
+    Callback = function()
+        ReplicatedStorage.Remotes.CommF_:InvokeServer("GetFruits")
+        lp.PlayerGui.Main.FruitShop.Visible = true
+    end
+})
 
 local RarityFruits = {
     Common = {"Rocket Fruit","Spin Fruit","Chop Fruit","Spring Fruit","Bomb Fruit","Smoke Fruit","Spike Fruit"},
@@ -267,21 +257,13 @@ local RarityFruits = {
 
 local SelectRarityFruits = {"Common - Mythical","Uncommon - Mythical","Rare - Mythical","Legendary - Mythical","Mythical"}
 
-FruitTab:Dropdown("Store Rarity Fruit", SelectRarityFruits, _G.Settings.Fruit["Store Rarity Fruit"], function(v)
-    _G.Settings.Fruit["Store Rarity Fruit"] = v
-    SaveSetting()
-end)
-
 function CheckFruits()
-    -- Logic to filter fruits by rarity
     local result = {}
     local min, max = string.match(_G.Settings.Fruit["Store Rarity Fruit"], "(%a+) %- (%a+)")
     local inRange = false
-    for _, list in pairs(RarityFruits) do
+    for rarity, list in pairs(RarityFruits) do
         for _, fruit in pairs(list) do
-            if fruit == _G.Settings.Fruit["Store Rarity Fruit"] then
-                inRange = true
-            end
+            if fruit == min then inRange = true end
             if inRange then table.insert(result, fruit) end
             if fruit == max then break end
         end
@@ -289,10 +271,25 @@ function CheckFruits()
     return result
 end
 
-FruitTab:Toggle("Auto Store Fruit", _G.Settings.Fruit["Auto Store Fruit"], "Auto store fruits", function(v)
-    _G.Settings.Fruit["Auto Store Fruit"] = v
-    SaveSetting()
-end)
+FruitTab:Dropdown({
+    Title = "Store Rarity Fruit",
+    List = SelectRarityFruits,
+    Value = _G.Settings.Fruit["Store Rarity Fruit"],
+    Callback = function(v)
+        _G.Settings.Fruit["Store Rarity Fruit"] = v
+        SaveSetting()
+    end
+})
+
+FruitTab:Toggle({
+    Title = "Auto Store Fruit",
+    Desc = "Auto store fruits by rarity",
+    Value = _G.Settings.Fruit["Auto Store Fruit"],
+    Callback = function(v)
+        _G.Settings.Fruit["Auto Store Fruit"] = v
+        SaveSetting()
+    end
+})
 
 spawn(function()
     while task.wait(0.2) do
@@ -314,21 +311,25 @@ spawn(function()
     end
 end)
 
-FruitTab:Toggle("Fruit Notification", _G.Settings.Fruit["Fruit Notification"], "Notify when fruit spawns", function(v)
-    _G.Settings.Fruit["Fruit Notification"] = v
-    SaveSetting()
-end)
+FruitTab:Toggle({
+    Title = "Fruit Notification",
+    Desc = "Notify when fruit spawns",
+    Value = _G.Settings.Fruit["Fruit Notification"],
+    Callback = function(v)
+        _G.Settings.Fruit["Fruit Notification"] = v
+        SaveSetting()
+    end
+})
 
 spawn(function()
     while task.wait(2) do
         if _G.Settings.Fruit["Fruit Notification"] then
             for _, fruit in ipairs(Workspace:GetChildren()) do
                 if string.find(fruit.Name, "Fruit") and fruit:FindFirstChild("Handle") then
-                    Notifier.new({
+                    Window:Notify({
                         Title = "Fruit Spawned",
-                        Content = fruit.Name,
-                        Duration = 5,
-                        Icon = "rbxassetid://120245531583106"
+                        Desc = fruit.Name,
+                        Time = 5
                     })
                 end
             end
@@ -336,10 +337,15 @@ spawn(function()
     end
 end)
 
-FruitTab:Toggle("Teleport To Fruit", _G.Settings.Fruit["Teleport To Fruit"], "Teleport to fruit instantly", function(v)
-    _G.Settings.Fruit["Teleport To Fruit"] = v
-    SaveSetting()
-end)
+FruitTab:Toggle({
+    Title = "Teleport To Fruit",
+    Desc = "Teleport to fruit instantly",
+    Value = _G.Settings.Fruit["Teleport To Fruit"],
+    Callback = function(v)
+        _G.Settings.Fruit["Teleport To Fruit"] = v
+        SaveSetting()
+    end
+})
 
 spawn(function()
     while task.wait(0.2) do
@@ -353,23 +359,32 @@ spawn(function()
     end
 end)
 
-FruitTab:Button("Grab All Fruits", function()
-    for _, fruit in ipairs(Workspace:GetChildren()) do
-        if fruit:IsA("Tool") and fruit:FindFirstChild("Handle") then
-            fruit.Handle.CFrame = hrp.CFrame
+FruitTab:Button({
+    Title = "Grab All Fruits",
+    Desc = "Pull all fruits to you",
+    Callback = function()
+        for _, fruit in ipairs(Workspace:GetChildren()) do
+            if fruit:IsA("Tool") and fruit:FindFirstChild("Handle") then
+                fruit.Handle.CFrame = hrp.CFrame
+            end
         end
     end
-end)
+})
 
 ------------------------------------------------------------------
 -- 7. RAID TAB
 ------------------------------------------------------------------
-RaidTab:Seperator("Auto Raid")
+RaidTab:Section({Title = "Auto Raid"})
 
-RaidTab:Toggle("Auto Dungeon", _G.Settings.Raid["Auto Dungeon"], "Auto enter dungeon", function(v)
-    _G.Settings.Raid["Auto Dungeon"] = v
-    SaveSetting()
-end)
+RaidTab:Toggle({
+    Title = "Auto Dungeon",
+    Desc = "Auto enter dungeon",
+    Value = _G.Settings.Raid["Auto Dungeon"],
+    Callback = function(v)
+        _G.Settings.Raid["Auto Dungeon"] = v
+        SaveSetting()
+    end
+})
 
 spawn(function()
     while task.wait(0.2) do
@@ -381,54 +396,87 @@ spawn(function()
     end
 end)
 
-RaidTab:Slider("Max Price for Fruit", 100000, 5000000, _G.Settings.Raid["Price Devil Fruit"], function(v)
-    _G.Settings.Raid["Price Devil Fruit"] = v
-    SaveSetting()
-end)
+RaidTab:Slider({
+    Title = "Max Price for Fruit",
+    Min = 100000,
+    Max = 5000000,
+    Rounding = 0,
+    Value = _G.Settings.Raid["Price Devil Fruit"],
+    Callback = function(v)
+        _G.Settings.Raid["Price Devil Fruit"] = v
+        SaveSetting()
+    end
+})
 
 ------------------------------------------------------------------
 -- 8. ESP TAB
 ------------------------------------------------------------------
-EspTab:Seperator("ESP")
+EspTab:Section({Title = "ESP"})
 
-EspTab:Toggle("ESP Mob", _G.Settings.Esp["ESP Mob"], "Show mob ESP", function(v)
-    _G.Settings.Esp["ESP Mob"] = v
-    -- ESP Logic Here
-end)
+EspTab:Toggle({
+    Title = "ESP Mob",
+    Desc = "Show mob ESP",
+    Value = _G.Settings.Esp["ESP Mob"],
+    Callback = function(v)
+        _G.Settings.Esp["ESP Mob"] = v
+        -- Add ESP logic if needed
+    end
+})
 
-EspTab:Toggle("ESP Devil Fruit", _G.Settings.Esp["ESP DevilFruit"], "Show Devil Fruit ESP", function(v)
-    _G.Settings.Esp["ESP DevilFruit"] = v
-    -- ESP Logic Here
-end)
+EspTab:Toggle({
+    Title = "ESP Devil Fruit",
+    Desc = "Show Devil Fruit ESP",
+    Value = _G.Settings.Esp["ESP DevilFruit"],
+    Callback = function(v)
+        _G.Settings.Esp["ESP DevilFruit"] = v
+        -- Add ESP logic
+    end
+})
 
-EspTab:Toggle("ESP Real Fruit", _G.Settings.Esp["ESP RealFruit"], "Show Real Fruit ESP", function(v)
-    _G.Settings.Esp["ESP RealFruit"] = v
-    -- ESP Logic Here
-end)
+EspTab:Toggle({
+    Title = "ESP Real Fruit",
+    Desc = "Show Real Fruit ESP",
+    Value = _G.Settings.Esp["ESP RealFruit"],
+    Callback = function(v)
+        _G.Settings.Esp["ESP RealFruit"] = v
+        -- Add ESP logic
+    end
+})
 
 ------------------------------------------------------------------
 -- 9. SETTINGS TAB
 ------------------------------------------------------------------
-local General = SettingsTab:DrawSection({ Name = "General" })
+SettingsTab:Section({Title = "General"})
 
-General:Toggle("Hide Chat", _G.Settings.Misc["Hide Chat"], "Hide chat UI", function(v)
-    _G.Settings.Misc["Hide Chat"] = v
-    SaveSetting()
-end)
-
-General:Toggle("Hide Leaderboard", _G.Settings.Misc["Hide Leaderboard"], "Hide leaderboard", function(v)
-    _G.Settings.Misc["Hide Leaderboard"] = v
-    SaveSetting()
-end)
-
-local Theme = SettingsTab:DrawSection({ Name = "Theme" })
-
-Theme:AddDropdown({
-    Name = "Select Theme",
-    Default = "Default",
-    Values = { "Default", "Dark Green", "Dark Blue", "Purple Rose", "Skeet" },
+SettingsTab:Toggle({
+    Title = "Hide Chat",
+    Desc = "Hide chat UI",
+    Value = _G.Settings.Misc["Hide Chat"],
     Callback = function(v)
-        Compkiller:SetTheme(v)
+        _G.Settings.Misc["Hide Chat"] = v
+        SaveSetting()
+    end
+})
+
+SettingsTab:Toggle({
+    Title = "Hide Leaderboard",
+    Desc = "Hide leaderboard",
+    Value = _G.Settings.Misc["Hide Leaderboard"],
+    Callback = function(v)
+        _G.Settings.Misc["Hide Leaderboard"] = v
+        SaveSetting()
+    end
+})
+
+SettingsTab:Button({
+    Title = "Unload Hub",
+    Desc = "Destroy GUI",
+    Callback = function()
+        local gui = game.CoreGui:FindFirstChild("Stellar")
+        if gui then gui:Destroy() end
+        local mobile = game.CoreGui:FindFirstChild("FlashlightMobileToggle")
+        if mobile then mobile:Destroy() end
+        Window:Notify({ Title = "Unloaded", Desc = "Hub closed.", Time = 3 })
     end
 })
 
@@ -475,7 +523,7 @@ btn.InputBegan:Connect(function(input)
             end
         end)
     elseif input.UserInputType == Enum.UserInputType.MouseButton1 then
-        local hub = CoreGui:FindFirstChild("Compkiller-UI")
+        local hub = game.CoreGui:FindFirstChild("Stellar")
         if hub then hub.Enabled = not hub.Enabled end
     end
 end)
@@ -492,9 +540,16 @@ end)
 
 btn.InputEnded:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.Touch and not dragging then
-        local hub = CoreGui:FindFirstChild("Compkiller-UI")
+        local hub = game.CoreGui:FindFirstChild("Stellar")
         if hub then hub.Enabled = not hub.Enabled end
     end
 end)
+
+-- Final Notify
+Window:Notify({
+    Title = "Loaded",
+    Desc = "Flash Light Hub for Blox Fruits is ready!",
+    Time = 5
+})
 
 print("✨ Flash Light Hub (Blox Fruits) Loaded!")
