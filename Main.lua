@@ -77,7 +77,7 @@ do
     for Index, Value in pairs(getconnections(Players.LocalPlayer.PlayerGui.Hotbar.Block.Activated)) do
         if Value and Value.Function and not iscclosure(Value.Function) then
             for Index2, Value2 in pairs(getupvalues(Value.Function)) do
-                if type(Value2) == "function" then
+                if type(IValue2) == "function" then
                     Parry_Key = getupvalue(getupvalue(Value2, 2), 17)
                 end
             end
@@ -182,8 +182,13 @@ MainTab:Seperator("Parry Options")
 
 MainTab:Toggle("Auto Parry", nil, function(Value)
     AutoParryEnabled = Value
+    for _, conn in pairs(Connections) do
+        if conn.label == "AutoParry" then
+            conn:Disconnect()
+        end
+    end
     if Value then
-        table.insert(Connections, RunService.RenderStepped:Connect(function()
+        local conn = RunService.RenderStepped:Connect(function()
             if not AutoParryEnabled then return end
             local Ball = Auto_Parry.Get_Ball()
             if Ball and Player.Character and Player.Character.PrimaryPart then
@@ -192,34 +197,52 @@ MainTab:Toggle("Auto Parry", nil, function(Value)
                     Auto_Parry.Parry(SelectedParryDirection)
                 end
             end
-        end))
+        end)
+        conn.label = "AutoParry"
+        table.insert(Connections, conn)
     end
+    Stellar:Notify("Auto Parry " .. (Value and "Enabled" or "Disabled"), 3)
 end)
 
 MainTab:Toggle("Spam Parry", nil, function(Value)
     SpamParryEnabled = Value
+    for _, conn in pairs(Connections) do
+        if conn.label == "SpamParry" then
+            conn:Disconnect()
+        end
+    end
     if Value then
-        table.insert(Connections, RunService.RenderStepped:Connect(function()
+        local conn = RunService.RenderStepped:Connect(function()
             if not SpamParryEnabled then return end
             Auto_Parry.Parry(SelectedParryDirection)
-        end))
+        end)
+        conn.label = "SpamParry"
+        table.insert(Connections, conn)
     end
+    Stellar:Notify("Spam Parry " .. (Value and "Enabled" or "Disabled"), 3)
 end)
 
 MainTab:Dropdown("Parry Direction", {"Camera", "Straight", "Backwards", "Left", "Right", "Random", "RandomTarget"}, "Camera", function(Option)
     SelectedParryDirection = Option
+    Stellar:Notify("Parry Direction set to " .. Option, 3)
 end)
 
 MainTab:Slider("Prediction (ms)", 0, 150, 0, function(Value)
     PredictionMS = Value
+    Stellar:Notify("Prediction set to " .. Value .. "ms", 3)
 end)
 
 VisualsTab:Seperator("Visual Options")
 
 VisualsTab:Toggle("Ball ESP", nil, function(Value)
     BallESPEnabled = Value
+    for _, conn in pairs(Connections) do
+        if conn.label == "BallESP" then
+            conn:Disconnect()
+        end
+    end
     if Value then
-        table.insert(Connections, RunService.RenderStepped:Connect(function()
+        local conn = RunService.RenderStepped:Connect(function()
             if not BallESPEnabled then return end
             local Ball = Auto_Parry.Get_Ball()
             if Ball then
@@ -229,7 +252,9 @@ VisualsTab:Toggle("Ball ESP", nil, function(Value)
                 ESP.OutlineColor = Color3.fromRGB(255, 255, 255)
                 ESP.Enabled = true
             end
-        end))
+        end)
+        conn.label = "BallESP"
+        table.insert(Connections, conn)
     else
         for _, Ball in pairs(Workspace.Balls:GetChildren()) do
             if Ball:FindFirstChild("ESP") then
@@ -237,12 +262,18 @@ VisualsTab:Toggle("Ball ESP", nil, function(Value)
             end
         end
     end
+    Stellar:Notify("Ball ESP " .. (Value and "Enabled" or "Disabled"), 3)
 end)
 
 VisualsTab:Toggle("Rainbow Trail", nil, function(Value)
     RainbowTrailEnabled = Value
+    for _, conn in pairs(Connections) do
+        if conn.label == "RainbowTrail" then
+            conn:Disconnect()
+        end
+    end
     if Value then
-        table.insert(Connections, RunService.RenderStepped:Connect(function()
+        local conn = RunService.RenderStepped:Connect(function()
             if not RainbowTrailEnabled then return end
             local Ball = Auto_Parry.Get_Ball()
             if Ball and not Ball:FindFirstChild("RainbowTrail") then
@@ -267,7 +298,9 @@ VisualsTab:Toggle("Rainbow Trail", nil, function(Value)
                     ColorSequenceKeypoint.new(1, Color3.fromRGB(148, 0, 211))
                 })
             end
-        end))
+        end)
+        conn.label = "RainbowTrail"
+        table.insert(Connections, conn)
     else
         for _, Ball in pairs(Workspace.Balls:GetChildren()) do
             if Ball:FindFirstChild("RainbowTrail") then
@@ -278,36 +311,58 @@ VisualsTab:Toggle("Rainbow Trail", nil, function(Value)
             end
         end
     end
+    Stellar:Notify("Rainbow Trail " .. (Value and "Enabled" or "Disabled"), 3)
 end)
 
 VisualsTab:Toggle("View Ball", nil, function(Value)
     ViewBallEnabled = Value
+    for _, conn in pairs(Connections) do
+        if conn.label == "ViewBall" then
+            conn:Disconnect()
+        end
+    end
     if Value then
-        table.insert(Connections, RunService.RenderStepped:Connect(function()
+        local conn = RunService.RenderStepped:Connect(function()
             if not ViewBallEnabled then return end
             local Ball = Auto_Parry.Get_Ball()
             if Ball then
                 Workspace.CurrentCamera.CFrame = CFrame.new(Workspace.CurrentCamera.CFrame.Position, Ball.Position)
             end
-        end))
+        end)
+        conn.label = "ViewBall"
+        table.insert(Connections, conn)
     else
         Workspace.CurrentCamera.CameraSubject = Player.Character and Player.Character.Humanoid or nil
     end
+    Stellar:Notify("View Ball " .. (Value and "Enabled" or "Disabled"), 3)
 end)
 
 VisualsTab:Slider("Camera FOV", 50, 120, 70, function(Value)
     CameraFOV = Value
-    table.insert(Connections, RunService.RenderStepped:Connect(function()
+    for _, conn in pairs(Connections) do
+        if conn.label == "CameraFOV" then
+            conn:Disconnect()
+        end
+    end
+    local conn = RunService.RenderStepped:Connect(function()
         Workspace.CurrentCamera.FieldOfView = CameraFOV
-    end))
+    end)
+    conn.label = "CameraFOV"
+    table.insert(Connections, conn)
+    Stellar:Notify("Camera FOV set to " .. Value, 3)
 end)
 
 FarmingTab:Seperator("Farming Options")
 
 FarmingTab:Toggle("Auto Play", nil, function(Value)
     AutoPlayEnabled = Value
+    for _, conn in pairs(Connections) do
+        if conn.label == "AutoPlay" then
+            conn:Disconnect()
+        end
+    end
     if Value then
-        table.insert(Connections, RunService.RenderStepped:Connect(function()
+        local conn = RunService.RenderStepped:Connect(function()
             if not AutoPlayEnabled then return end
             local Ball = Auto_Parry.Get_Ball()
             if Ball and Player.Character and Player.Character.PrimaryPart then
@@ -324,12 +379,15 @@ FarmingTab:Toggle("Auto Play", nil, function(Value)
                     VirtualInputManager:SendKeyEvent(true, dodgeKey, false, game)
                 end
             end
-        end))
+        end)
+        conn.label = "AutoPlay"
+        table.insert(Connections, conn)
     else
         for _, key in pairs({"W", "A", "S", "D"}) do
             VirtualInputManager:SendKeyEvent(false, key, false, game)
         end
     end
+    Stellar:Notify("Auto Play " .. (Value and "Enabled" or "Disabled"), 3)
 end)
 
 MiscTab:Seperator("Miscellaneous")
@@ -357,12 +415,16 @@ MiscTab:Button("Unload Script", function()
     end
     Workspace.CurrentCamera.FieldOfView = 70
     Workspace.CurrentCamera.CameraSubject = Player.Character and Player.Character.Humanoid or nil
+    local buttonGui = Player.PlayerGui:FindFirstChild("FlashlightButton")
+    if buttonGui then buttonGui:Destroy() end
     Stellar:Destroy()
+    Stellar:Notify("Script unloaded!", 3)
 end)
 
 local ScreenGui = Instance.new("ScreenGui", Player.PlayerGui)
 ScreenGui.Name = "FlashlightButton"
 ScreenGui.ResetOnSpawn = false
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 local OutlineButton = Instance.new("Frame", ScreenGui)
 OutlineButton.Name = "OutlineButton"
 OutlineButton.ClipsDescendants = true
@@ -420,6 +482,7 @@ ImageButton.Activated:Connect(function()
     local stellarGui = game.CoreGui:FindFirstChild("STELLAR")
     if stellarGui then
         stellarGui.Enabled = not stellarGui.Enabled
+        Stellar:Notify("GUI " .. (stellarGui.Enabled and "Shown" or "Hidden"), 3)
     end
 end)
 
