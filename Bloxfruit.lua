@@ -1,20 +1,40 @@
--- // Flashlight Hub - Blox Fruits | Enhanced with Vortex Hub Logic
-local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/x2zu/OPEN-SOURCE-UI-ROBLOX/refs/heads/main/X2ZU%20UI%20ROBLOX%20OPEN%20SOURCE/DummyUI.lua"))()
+ -- // Flashlight Hub - Blox Fruits | Optimized & Fixed
+-- // Based on x2zu UI + Vortex Hub Logic
 
--- // Services
+-- === SAFETY CHECKS === --
+if not game:IsLoaded() then game.Loaded:Wait() end
+if not identifyexecutor then
+    return warn("Unsupported executor. Please use a supported one (e.g., Synapse, Krnl).")
+end
+
+-- === SERVICES === --
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game.Workspace
-local RunService = game.RunService
+local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local HttpService = game:GetService("HttpService")
 local UserInputService = game:GetService("UserInputService")
-local VirtualInputManager = game:service("VirtualInputManager")
+local VirtualInputManager = game:service("VirtualInputManager") or game:GetService("VirtualInputManager")
 
 local LocalPlayer = Players.LocalPlayer
 local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 
--- // Window Configuration
+-- === LOAD UI LIBRARY (x2zu) === --
+local Library
+local uiSuccess, uiResult = pcall(function()
+    return loadstring(game:HttpGet("https://raw.githubusercontent.com/x2zu/OPEN-SOURCE-UI-ROBLOX/refs/heads/main/X2ZU%20UI%20ROBLOX%20OPEN%20SOURCE/DummyUI.lua", true))()
+end)
+
+if not uiSuccess then
+    warn("Failed to load x2zu UI. Check your connection or UI link.")
+    Library = nil
+    return
+else
+    Library = uiResult
+end
+
+-- === WINDOW SETUP === --
 local Window = Library:Window({
     Title = "Flashlight Hub",
     Desc = "Blox Fruits - Made with ❤️",
@@ -30,7 +50,7 @@ local Window = Library:Window({
     }
 })
 
--- // Settings System (From Vortex Hub Logic)
+-- === SETTINGS SYSTEM (Vortex-Style) === --
 _G.Settings = {
     Main = {
         ["Selected Weapon"] = "Sword",
@@ -116,30 +136,54 @@ _G.Settings = {
     }
 }
 
--- // Save & Load Settings
+-- === FOLDER & FILE HELPERS === --
+local function isfolder(folder)
+    local success, _ = pcall(function()
+        return readfile(folder)
+    end)
+    return success
+end
+
+local function makefolder(folder)
+    local success, _ = pcall(function()
+        writefile(folder .. "/init.txt", "")
+        delfile(folder .. "/init.txt")
+    end)
+    return success
+end
+
+-- === SAVE & LOAD SETTINGS === --
 local function SaveSettings()
-    if not isfolder("Flashlight Hub") then makefolder("Flashlight Hub") end
-    writefile("Flashlight Hub/settings.json", HttpService:JSONEncode(_G.Settings))
+    spawn(function()
+        if not isfolder("Flashlight Hub") then
+            makefolder("Flashlight Hub")
+        end
+        writefile("Flashlight Hub/settings.json", HttpService:JSONEncode(_G.Settings))
+    end)
 end
 
 local function LoadSettings()
-    if isfile("Flashlight Hub/settings.json") then
-        local data = readfile("Flashlight Hub/settings.json")
-        local loaded = HttpService:JSONDecode(data)
-        for i, v in pairs(loaded) do
-            if _G.Settings[i] then
-                for k, x in pairs(v) do
-                    _G.Settings[i][k] = x
+    spawn(function()
+        if isfolder("Flashlight Hub") and isfile("Flashlight Hub/settings.json") then
+            local data = readfile("Flashlight Hub/settings.json")
+            local loaded = HttpService:JSONDecode(data)
+            for i, v in pairs(loaded) do
+                if _G.Settings[i] then
+                    for k, x in pairs(v) do
+                        _G.Settings[i][k] = x
+                    end
                 end
             end
+            Window:Notify({ Title = "Settings", Desc = "Loaded successfully!", Time = 4 })
+        else
+            Window:Notify({ Title = "Settings", Desc = "No settings found. Using defaults.", Time = 4 })
         end
-    end
+    end)
 end
 
 LoadSettings()
-Window:Notify({ Title = "Flashlight Hub", Desc = "Loaded successfully!", Time = 4 })
 
--- // World Detection
+-- === WORLD DETECTION === --
 local World1, World2, World3 = false, false, false
 if game.PlaceId == 2753915549 then
     World1 = true
@@ -149,39 +193,47 @@ elseif game.PlaceId == 7449423635 then
     World3 = true
 end
 
--- // Teleport Function (Vortex-Style)
+-- === TELEPORT FUNCTION === --
 function TweenPlayer(cf)
-    local hrp = LocalPlayer.Character:WaitForChild("HumanoidRootPart")
+    local hrp = Character:WaitForChild("HumanoidRootPart", 5)
+    if not hrp then return end
     local speed = _G.Settings.Setting["Player Tween Speed"] / 100
     local tween = TweenService:Create(hrp, TweenInfo.new(speed), { CFrame = cf })
     tween:Play()
 end
 
--- // Auto Haki (Vortex Logic)
+-- === AUTO HAKI === --
 function AutoHaki()
-    if _G.Settings.Setting["Auto Haki"] then
-        if not LocalPlayer.Character:FindFirstChild("HasBuso") then
+    if not _G.Settings.Setting["Auto Haki"] then return end
+    if not Character:FindFirstChild("HasBuso") then
+        pcall(function()
             ReplicatedStorage.Remotes.CommF_:InvokeServer("Buso")
-        end
-        if not LocalPlayer.Character:FindFirstChild("HasKen") then
+        end)
+    end
+    if not Character:FindFirstChild("HasKen") then
+        pcall(function()
             ReplicatedStorage.Remotes.CommF_:InvokeServer("Ken")
-        end
+        end)
     end
 end
 
--- // Equip Weapon
+-- === EQUIP WEAPON === --
 function EquipWeapon(weaponName)
     for _, v in pairs(LocalPlayer.Backpack:GetChildren()) do
         if v.Name == weaponName and v:IsA("Tool") then
-            LocalPlayer.Character:WaitForChild("Humanoid"):EquipTool(v)
+            pcall(function()
+                Character:WaitForChild("Humanoid"):EquipTool(v)
+            end)
             return
         end
     end
 end
 
--- // Highlight ESP (Vortex-Style)
+-- === HIGHLIGHT ESP === --
 function CreateHighlight(part, color)
-    if part:FindFirstChild("Flashlight_Highlight") then part:FindFirstChild("Flashlight_Highlight"):Destroy() end
+    if part:FindFirstChild("Flashlight_Highlight") then
+        part:FindFirstChild("Flashlight_Highlight"):Destroy()
+    end
     local highlight = Instance.new("Highlight")
     highlight.Name = "Flashlight_Highlight"
     highlight.FillColor = color
@@ -192,7 +244,7 @@ function CreateHighlight(part, color)
     highlight.Parent = part
 end
 
--- // ESP System (With Highlight Mode)
+-- === ESP SYSTEM === --
 spawn(function()
     while wait(0.2) do
         if _G.Settings.Esp["Highlight Mode"] then
@@ -225,9 +277,8 @@ spawn(function()
     end
 end)
 
--- // MAIN TAB
+-- === MAIN TAB === --
 local MainTab = Window:Tab({ Title = "Main", Icon = "star" })
-
 MainTab:Section({ Title = "Auto Farm Level" })
 
 MainTab:Toggle({
@@ -259,9 +310,8 @@ MainTab:Dropdown({
     end
 })
 
--- // ITEMS TAB
+-- === ITEMS TAB === --
 local ItemsTab = Window:Tab({ Title = "Items", Icon = "sword" })
-
 for item, state in pairs(_G.Settings.Items) do
     ItemsTab:Toggle({
         Title = "Auto " .. item:sub(6),
@@ -273,9 +323,8 @@ for item, state in pairs(_G.Settings.Items) do
     })
 end
 
--- // PLAYER TAB
+-- === PLAYER TAB === --
 local PlayerTab = Window:Tab({ Title = "Player", Icon = "user" })
-
 PlayerTab:Section({ Title = "Movement & Abilities" })
 
 for _, opt in pairs({ "Walk On Water", "No Clip", "Infinite Energy", "Infinite Ability" }) do
@@ -292,20 +341,23 @@ end
 PlayerTab:Button({
     Title = "Join Pirates",
     Callback = function()
-        ReplicatedStorage.Remotes.CommF_:InvokeServer("SetTeam", "Pirates")
+        pcall(function()
+            ReplicatedStorage.Remotes.CommF_:InvokeServer("SetTeam", "Pirates")
+        end)
     end
 })
 
 PlayerTab:Button({
     Title = "Join Marines",
     Callback = function()
-        ReplicatedStorage.Remotes.CommF_:InvokeServer("SetTeam", "Marines")
+        pcall(function()
+            ReplicatedStorage.Remotes.CommF_:InvokeServer("SetTeam", "Marines")
+        end)
     end
 })
 
--- // STATS TAB
+-- === STATS TAB === --
 local StatsTab = Window:Tab({ Title = "Stats", Icon = "award" })
-
 for stat, state in pairs(_G.Settings.Stats) do
     if stat:find("Auto Add") then
         local name = stat:sub(9, -7)
@@ -320,9 +372,8 @@ for stat, state in pairs(_G.Settings.Stats) do
     end
 end
 
--- // FRUIT TAB
+-- === FRUIT TAB === --
 local FruitTab = Window:Tab({ Title = "Fruit", Icon = "vegan" })
-
 FruitTab:Toggle({
     Title = "Auto Buy Random Fruit",
     Value = _G.Settings.Fruit["Auto Buy Random Fruit"],
@@ -360,7 +411,7 @@ FruitTab:Toggle({
     end
 })
 
--- Auto Fruit Teleport Loop
+-- Auto Fruit Loop
 spawn(function()
     while wait(0.2) do
         if _G.Settings.Fruit["Teleport To Fruit"] then
@@ -374,9 +425,8 @@ spawn(function()
     end
 end)
 
--- // MISC TAB
+-- === MISC TAB === --
 local MiscTab = Window:Tab({ Title = "Misc", Icon = "settings" })
-
 MiscTab:Toggle({
     Title = "Hide Chat",
     Value = _G.Settings.Misc["Hide Chat"],
@@ -420,19 +470,24 @@ MiscTab:Button({
 MiscTab:Button({
     Title = "Server Hop",
     Callback = function()
-        local servers = HttpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?sortOrder=Asc&limit=100")).data
-        for _, v in pairs(servers) do
-            if v.playing < v.maxPlayers then
-                game.TeleportService:TeleportToPlaceInstance(game.PlaceId, v.id)
-                break
+        local success, res = pcall(function()
+            return HttpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?sortOrder=Asc&limit=100"))
+        end)
+        if success and res and res.data then
+            for _, v in pairs(res.data) do
+                if v.playing < v.maxPlayers then
+                    game.TeleportService:TeleportToPlaceInstance(game.PlaceId, v.id)
+                    break
+                end
             end
+        else
+            Window:Notify({ Title = "Error", Desc = "Failed to fetch servers.", Time = 4 })
         end
     end
 })
 
--- // INFO TAB
+-- === INFO TAB === --
 local InfoTab = Window:Tab({ Title = "Info", Icon = "info" })
-
 InfoTab:Paragraph({
     Title = "Flashlight Hub",
     Content = "Blox Fruits Script\nMade with ❤️\nVersion: 1.0\nUI: x2zu Open Source\nAuthor: Flashlight"
@@ -446,30 +501,29 @@ InfoTab:Button({
     end
 })
 
--- // Final Welcome
-Window:Notify({
-    Title = "Flashlight Hub",
-    Desc = "Welcome back, " .. LocalPlayer.Name .. "!",
-    Time = 5
-})
-
--- // Background Loops (Vortex Hub Logic)
+-- === BACKGROUND LOOP === --
 spawn(function()
     while wait(1) do
         if _G.Settings.Setting["Auto Rejoin"] then
-            game.CoreGui.RobloxPromptGui.promptOverlay.ChildAdded:Connect(function(prompt)
-                if prompt.Name == "ErrorPrompt" then
-                    game.TeleportService:Teleport(game.PlaceId, LocalPlayer)
-                end
+            pcall(function()
+                game.CoreGui.RobloxPromptGui.promptOverlay.ChildAdded:Connect(function(prompt)
+                    if prompt.Name == "ErrorPrompt" then
+                        game.TeleportService:Teleport(game.PlaceId, LocalPlayer)
+                    end
+                end)
             end)
         end
 
         if _G.Settings.Fruit["Auto Buy Random Fruit"] then
-            ReplicatedStorage.Remotes.CommF_:InvokeServer("Cousin", "Buy")
+            pcall(function()
+                ReplicatedStorage.Remotes.CommF_:InvokeServer("Cousin", "Buy")
+            end)
         end
 
         if _G.Settings.LocalPlayer["Infinite Energy"] then
-            LocalPlayer.Data.Energy.Value = 200
+            pcall(function()
+                LocalPlayer.Data.Energy.Value = 200
+            end)
         end
 
         if _G.Settings.LocalPlayer["Infinite Ability"] then
@@ -482,7 +536,7 @@ spawn(function()
     end
 end)
 
--- // Auto Farm Level (Vortex-Style Logic)
+-- === AUTO FARM LEVEL LOOP === --
 spawn(function()
     while wait(0.2) do
         if _G.Settings.Main["Auto Farm Level"] then
@@ -516,3 +570,10 @@ spawn(function()
         end
     end
 end)
+
+-- === WELCOME NOTIFICATION === --
+Window:Notify({
+    Title = "Flashlight Hub",
+    Desc = "Welcome back, " .. LocalPlayer.Name .. "!",
+    Time = 5
+})
