@@ -1,96 +1,29 @@
--- ⚡ 99 Nights Diamond Farmer
--- Auto Teleport + Farming | No UI Nav | No Commands
--- Just works.
-
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
-local CoreGui = game:GetService("CoreGui")
-local StarterGui = game:GetService("StarterGui")
 local TeleportService = game:GetService("TeleportService")
 local HttpService = game:GetService("HttpService")
+local Remote = game:GetService("ReplicatedStorage").RemoteEvents.RequestTakeDiamonds
+local Interface = LocalPlayer:WaitForChild("PlayerGui"):WaitForChild("Interface")
+local DiamondCount = Interface:WaitForChild("DiamondCount"):WaitForChild("Count")
 
--- 🔧 CONFIG
-local FARM_PLACE_ID = 126509999114328 -- Farm server
-local REMOTE_NAME = "RequestTakeDiamonds"
-
--- 🔁 Check if already running (avoid duplicates)
-if CoreGui:FindFirstChild("gg") then
+-- 🔒 ONLY RUN IN FARM SERVER
+if game.PlaceId ~= 126509999114328 then
     return
 end
 
--- 🌐 Remote & UI elements (will be set after teleport)
-local Remote, DiamondCount
-
--- 🎨 UI Setup (Persists across teleports if executor supports it)
-local function createUI()
-    local ScreenGui = Instance.new("ScreenGui")
-    ScreenGui.Name = "gg"
-    ScreenGui.ResetOnSpawn = false
-    ScreenGui.Parent = CoreGui
-
-    local Frame = Instance.new("Frame", ScreenGui)
-    Frame.Size = UDim2.new(0, 200, 0, 90)
-    Frame.Position = UDim2.new(0, 80, 0, 100)
-    Frame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-    Frame.BorderSizePixel = 0
-    Frame.Active = true
-    Frame.Draggable = true
-
-    -- Corner
-    local UICorner = Instance.new("UICorner", Frame)
-    UICorner.CornerRadius = UDim.new(0, 8)
-
-    -- Rainbow Border
-    local UIStroke = Instance.new("UIStroke", Frame)
-    UIStroke.Thickness = 1.5
-    UIStroke.Color = Color3.fromRGB(255, 0, 0)
-
-    -- Title
-    local Title = Instance.new("TextLabel", Frame)
-    Title.Size = UDim2.new(1, 0, 0, 30)
-    Title.BackgroundTransparency = 1
-    Title.Text = "Farm Diamond | Cáo Mod"
-    Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-    Title.Font = Enum.Font.GothamBold
-    Title.TextSize = 14
-    Title.TextStrokeTransparency = 0.6
-
-    -- Diamond Counter
-    local Counter = Instance.new("TextLabel", Frame)
-    Counter.Size = UDim2.new(1, -20, 0, 35)
-    Counter.Position = UDim2.new(0, 10, 0, 40)
-    Counter.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-    Counter.TextColor3 = Color3.fromRGB(255, 255, 255)
-    Counter.Font = Enum.Font.GothamBold
-    Counter.TextSize = 14
-    Counter.BorderSizePixel = 0
-
-    local CounterCorner = Instance.new("UICorner", Counter)
-    CounterCorner.CornerRadius = UDim.new(0, 6)
-
-    -- Rainbow animation
-    task.spawn(function()
-        while task.wait(0.05) do
-            if not Frame.Parent then break end
-            local hue = tick() % 5 / 5
-            UIStroke.Color = Color3.fromHSV(hue, 1, 1)
-        end
-    end)
-
-    return ScreenGui, Frame, Counter
-end
-
--- 🌈 Rainbow Stroke (alternative)
+-- 🌈 Rainbow Stroke
 local function rainbowStroke(stroke)
     task.spawn(function()
-        while task.wait(0.05) do
-            if not stroke.Parent then break end
-            stroke.Color = Color3.fromHSV(tick() % 5 / 5, 1, 1)
+        while task.wait() do
+            for hue = 0, 1, 0.01 do
+                stroke.Color = Color3.fromHSV(hue, 1, 1)
+                task.wait(0.02)
+            end
         end
     end)
 end
 
--- 🔁 Server Hop Function
+-- 🔁 Server Hop
 local function hopServer()
     local gameId = game.PlaceId
     while true do
@@ -101,28 +34,25 @@ local function hopServer()
             local data = HttpService:JSONDecode(body)
             for _, server in ipairs(data.data) do
                 if server.playing < server.maxPlayers and server.id ~= game.JobId then
-                    pcall(function()
-                        TeleportService:TeleportToPlaceInstance(gameId, server.id)
-                    end)
-                    while true do task.wait(1) end
+                    while true do
+                        pcall(function()
+                            TeleportService:TeleportToPlaceInstance(gameId, server.id, LocalPlayer)
+                        end)
+                        task.wait(0.1)
+                    end
                 end
             end
         end
-        task.wait(0.3)
+        task.wait(0.2)
     end
 end
 
--- 🔒 Duplicate Character Detection
+-- 🚫 Duplicate Character Detection
 task.spawn(function()
     while task.wait(1) do
         for _, char in pairs(workspace.Characters:GetChildren()) do
             if char:FindFirstChild("Humanoid") and char:FindFirstChild("HumanoidRootPart") then
-                if char.Humanoid.DisplayName == LocalPlayer.DisplayName then
-                    StarterGui:SetCore("SendNotification", {
-                        Title = "⚠️ Duplicate",
-                        Text = "Duplicate character! Hopping...",
-                        Duration = 3
-                    })
+                if char:FindFirstChild("Humanoid").DisplayName == LocalPlayer.DisplayName then
                     hopServer()
                 end
             end
@@ -130,99 +60,128 @@ task.spawn(function()
     end
 end)
 
--- 🧠 MAIN FARMING LOGIC
-local function startFarming()
-    -- Wait for character
-    repeat task.wait() until LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-    local hrp = LocalPlayer.Character.HumanoidRootPart
+-- 🎨 Modern UI
+local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
+ScreenGui.Name = "DiamondFarmUI"
 
-    -- Get remote and UI
-    Remote = game:GetService("ReplicatedStorage"):WaitForChild("RemoteEvents"):WaitForChild("RequestTakeDiamonds")
-    local Interface = LocalPlayer:WaitForChild("PlayerGui"):WaitForChild("Interface")
-    DiamondCount = Interface:WaitForChild("DiamondCount"):WaitForChild("Count")
+-- Toggle Button
+local ToggleButton = Instance.new("TextButton", ScreenGui)
+ToggleButton.Size = UDim2.new(0, 120, 0, 35)
+ToggleButton.Position = UDim2.new(0, 20, 0, 150)
+ToggleButton.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+ToggleButton.Text = "⚡ Toggle UI"
+ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToggleButton.Font = Enum.Font.GothamBold
+ToggleButton.TextSize = 14
+ToggleButton.AutoButtonColor = true
+local tbCorner = Instance.new("UICorner", ToggleButton)
+tbCorner.CornerRadius = UDim.new(0, 8)
+local tbStroke = Instance.new("UIStroke", ToggleButton)
+tbStroke.Thickness = 1.5
+rainbowStroke(tbStroke)
 
-    -- UI
-    local _, _, Counter = createUI()
+-- Main Frame
+local MainFrame = Instance.new("Frame", ScreenGui)
+MainFrame.Size = UDim2.new(0, 260, 0, 140)
+MainFrame.Position = UDim2.new(0, 20, 0, 200)
+MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+MainFrame.Active = true
+MainFrame.Draggable = true
+local mfCorner = Instance.new("UICorner", MainFrame)
+mfCorner.CornerRadius = UDim.new(0, 12)
+local mfStroke = Instance.new("UIStroke", MainFrame)
+mfStroke.Thickness = 2
+rainbowStroke(mfStroke)
 
-    -- Update counter
-    task.spawn(function()
-        while task.wait(0.2) do
-            Counter.Text = "Diamonds: " .. tostring(DiamondCount.Text)
-        end
-    end)
+-- Title
+local Title = Instance.new("TextLabel", MainFrame)
+Title.Size = UDim2.new(1, 0, 0, 35)
+Title.BackgroundTransparency = 1
+Title.Text = "💎 Diamond Farm Hub"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.Font = Enum.Font.GothamBold
+Title.TextSize = 16
 
-    -- Main loop
-    while true do
-        -- Find chest
-        local chest = workspace.Items:FindFirstChild("Stronghold Diamond Chest") or workspace.Items:FindFirstChild("Chest")
-        if not chest then
-            StarterGui:SetCore("SendNotification", {
-                Title = "🔍 Not Found",
-                Text = "Chest not found! Hopping...",
-                Duration = 3
-            })
-            hopServer()
-            return
-        end
+-- Diamond Counter
+local DiamondLabel = Instance.new("TextLabel", MainFrame)
+DiamondLabel.Size = UDim2.new(1, -20, 0, 35)
+DiamondLabel.Position = UDim2.new(0, 10, 0, 50)
+DiamondLabel.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+DiamondLabel.TextColor3 = Color3.new(1, 1, 1)
+DiamondLabel.Font = Enum.Font.GothamBold
+DiamondLabel.TextSize = 14
+DiamondLabel.BorderSizePixel = 0
+local dlCorner = Instance.new("UICorner", DiamondLabel)
+dlCorner.CornerRadius = UDim.new(0, 8)
 
-        -- Teleport to chest
-        hrp:PivotTo(CFrame.new(chest:GetPivot().Position + Vector3.new(0, 5, 0)))
+-- Status Label
+local StatusLabel = Instance.new("TextLabel", MainFrame)
+StatusLabel.Size = UDim2.new(1, -20, 0, 30)
+StatusLabel.Position = UDim2.new(0, 10, 0, 95)
+StatusLabel.BackgroundTransparency = 1
+StatusLabel.TextColor3 = Color3.new(0.8, 0.8, 0.8)
+StatusLabel.Font = Enum.Font.Gotham
+StatusLabel.TextSize = 13
+StatusLabel.Text = "⏳ Waiting..."
 
-        -- Wait for prompt
-        local proxPrompt = nil
-        repeat
-            task.wait(0.1)
-            local main = chest:FindFirstChild("Main")
-            local attachment = main and main:FindFirstChild("ProximityAttachment")
-            proxPrompt = attachment and attachment:FindFirstChild("ProximityInteraction")
-        until proxPrompt
+-- Toggle Logic
+local uiVisible = true
+ToggleButton.MouseButton1Click:Connect(function()
+    uiVisible = not uiVisible
+    MainFrame.Visible = uiVisible
+end)
 
-        -- Activate prompt
-        local startTime = tick()
-        while proxPrompt and proxPrompt.Parent and (tick() - startTime) < 10 do
-            pcall(fireproximityprompt, proxPrompt)
-            task.wait(0.2)
-        end
-
-        if proxPrompt and proxPrompt.Parent then
-            StarterGui:SetCore("SendNotification", {
-                Title = "⏰ Timeout",
-                Text = "Prompt failed! Hopping...",
-                Duration = 3
-            })
-            hopServer()
-            return
-        end
-
-        -- Wait for diamonds to spawn
-        repeat task.wait(0.1) until workspace:FindFirstChild("Diamond", true)
-
-        -- Collect all diamonds
-        for _, obj in pairs(workspace:GetDescendants()) do
-            if obj:IsA("Model") and obj.Name == "Diamond" and obj.Parent then
-                pcall(Remote.FireServer, Remote, obj)
-            end
-        end
-
-        StarterGui:SetCore("SendNotification", {
-            Title = "💎 Collected",
-            Text = "All diamonds taken! Hopping...",
-            Duration = 3
-        })
-        task.wait(1)
-        hopServer()
+-- 💎 Update Counter
+task.spawn(function()
+    while task.wait(0.5) do
+        DiamondLabel.Text = "Diamonds: " .. DiamondCount.Text
     end
-end
+end)
 
--- 🚀 MAIN: Check Place ID and Start
-if game.PlaceId == FARM_PLACE_ID then
-    -- Already in farm
-    startFarming()
-else
-    -- Teleport to farm
-    pcall(function()
-        TeleportService:TeleportToPlaceInstance(FARM_PLACE_ID)
-    end)
-    -- If teleport fails, try public servers
+-- ⚔ Farming Logic (kept same as your original)
+task.spawn(function()
+    repeat task.wait() until LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    local chest = workspace.Items:FindFirstChild("Stronghold Diamond Chest")
+    if not chest then
+        StatusLabel.Text = "❌ Chest not found..."
+        hopServer()
+        return
+    end
+
+    LocalPlayer.Character:PivotTo(CFrame.new(chest:GetPivot().Position))
+
+    local proxPrompt
+    repeat
+        task.wait(0.1)
+        local prox = chest:FindFirstChild("Main")
+        if prox and prox:FindFirstChild("ProximityAttachment") then
+            proxPrompt = prox.ProximityAttachment:FindFirstChild("ProximityInteraction")
+        end
+    until proxPrompt
+
+    local startTime = tick()
+    while proxPrompt and proxPrompt.Parent and (tick() - startTime) < 10 do
+        pcall(function()
+            fireproximityprompt(proxPrompt)
+        end)
+        task.wait(0.2)
+    end
+
+    if proxPrompt and proxPrompt.Parent then
+        StatusLabel.Text = "🚪 Stronghold starting..."
+        hopServer()
+        return
+    end
+
+    repeat task.wait(0.1) until workspace:FindFirstChild("Diamond", true)
+
+    for _, v in pairs(workspace:GetDescendants()) do
+        if v.ClassName == "Model" and v.Name == "Diamond" then
+            Remote:FireServer(v)
+        end
+    end
+
+    StatusLabel.Text = "✅ Collected all diamonds!"
+    task.wait(1)
     hopServer()
-end
+end)
