@@ -7,7 +7,7 @@ local CONFIG = {
     farmPlace  = 126509999114328,   -- farming place (auto-start farm here)
     autoStartFarm = true,           -- auto-start farming when in farmPlace
     hopProtection = true,           -- duplicate detection -> hop
-    maxHopAttempts = 100,            -- how many teleport attempts per hopServer call
+    maxHopAttempts = 100,           -- how many teleport attempts per hopServer call
     hopAttemptDelay = 0.5,          -- seconds between teleport attempts
 }
 
@@ -72,108 +72,106 @@ local function createUI()
     bg.BorderSizePixel = 0
     bg.Parent = screenGui
 
-    -- Control panel (small floating panel so the screen stays mostly black)
+    -- Control panel
     local panel = Instance.new("Frame")
-    panel.Name = "Panel"
-    panel.Size = UDim2.new(0, 280, 0, 150)
+    panel.Name = "FlashlightHubPanel"
+    panel.Size = UDim2.new(0, 300, 0, 180)
     panel.Position = UDim2.new(0, 16, 0, 22)
     panel.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
-    panel.BackgroundTransparency = 0.06
+    panel.BackgroundTransparency = 0.05
     panel.Parent = bg
     local corner = Instance.new("UICorner", panel)
-    corner.CornerRadius = UDim.new(0, 8)
+    corner.CornerRadius = UDim.new(0, 10)
 
     -- UI Gradient for flashlight effect
     local uiGradient = Instance.new("UIGradient", panel)
     uiGradient.Color = ColorSequence.new{
         ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 0, 0)),
-        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(20, 20, 20)),
+        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(20, 20, 40)),
         ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 0, 0))
     }
-    uiGradient.Rotation = 90
+    uiGradient.Rotation = 45
 
     -- UI Stroke for rainbow effect
     local uiStroke = Instance.new("UIStroke", panel)
     uiStroke.Thickness = 2
-    uiStroke.Color = Color3.new(1,1,1)
     task.spawn(function()
         while task.wait(0.05) do
             local hue = (tick() % 5) / 5
-            uiStroke.Color = Color3.fromHSV(hue, 1, 1)
+            uiStroke.Color = Color3.fromHSV(hue, 0.8, 0.9)
         end
     end)
 
     -- Title
     local title = Instance.new("TextLabel", panel)
-    title.Size = UDim2.new(1, -12, 0, 28)
-    title.Position = UDim2.new(0, 6, 0, 6)
+    title.Size = UDim2.new(1, -16, 0, 30)
+    title.Position = UDim2.new(0, 8, 0, 8)
     title.BackgroundTransparency = 1
     title.Font = Enum.Font.GothamBold
-    title.TextSize = 16
-    title.TextColor3 = Color3.new(1,1,1)
+    title.TextSize = 18
+    title.TextColor3 = Color3.new(0, 1, 1) -- Neon cyan
     title.Text = "🔦 Flashlight Hub"
 
     -- Diamonds counter
     local counter = Instance.new("TextLabel", panel)
     counter.Name = "Counter"
-    counter.Size = UDim2.new(1, -12, 0, 22)
-    counter.Position = UDim2.new(0, 6, 0, 38)
+    counter.Size = UDim2.new(1, -16, 0, 24)
+    counter.Position = UDim2.new(0, 8, 0, 40)
     counter.BackgroundTransparency = 1
     counter.Font = Enum.Font.GothamBold
-    counter.TextSize = 14
-    counter.TextColor3 = Color3.new(1,1,1)
+    counter.TextSize = 16
+    counter.TextColor3 = Color3.new(0, 1, 1)
     counter.Text = "Diamonds: --"
 
     -- Status label
     local statusLabel = Instance.new("TextLabel", panel)
     statusLabel.Name = "Status"
-    statusLabel.Size = UDim2.new(1, -12, 0, 18)
-    statusLabel.Position = UDim2.new(0, 6, 0, 64)
+    statusLabel.Size = UDim2.new(1, -16, 0, 20)
+    statusLabel.Position = UDim2.new(0, 8, 0, 68)
     statusLabel.BackgroundTransparency = 1
     statusLabel.Font = Enum.Font.Gotham
-    statusLabel.TextSize = 12
-    statusLabel.TextColor3 = Color3.fromRGB(200,200,200)
+    statusLabel.TextSize = 14
+    statusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
     statusLabel.Text = "Status: Idle"
 
     -- Start/Stop button
     local startBtn = Instance.new("TextButton", panel)
     startBtn.Name = "StartBtn"
-    startBtn.Size = UDim2.new(1, -12, 0, 28)
-    startBtn.Position = UDim2.new(0, 6, 0, 88)
-    startBtn.BackgroundColor3 = Color3.fromRGB(0,150,0)
+    startBtn.Size = UDim2.new(1, -16, 0, 32)
+    startBtn.Position = UDim2.new(0, 8, 0, 92)
+    startBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
     startBtn.Font = Enum.Font.GothamBold
-    startBtn.TextSize = 14
-    startBtn.TextColor3 = Color3.new(1,1,1)
-    startBtn.Text = "Stop Farming" -- default will be ON if autoStartFarm true
-    Instance.new("UICorner", startBtn).CornerRadius = UDim.new(0,6)
+    startBtn.TextSize = 16
+    startBtn.TextColor3 = Color3.new(1, 1, 1)
+    startBtn.Text = "Stop Farming"
+    Instance.new("UICorner", startBtn).CornerRadius = UDim.new(0, 8)
 
-    -- Hop button (new)
+    -- Hop button
     local hopBtn = Instance.new("TextButton", panel)
     hopBtn.Name = "HopBtn"
-    hopBtn.Size = UDim2.new(1, -12, 0, 28)
-    hopBtn.Position = UDim2.new(0, 6, 0, 118)
-    hopBtn.BackgroundColor3 = Color3.fromRGB(0,100,200)
+    hopBtn.Size = UDim2.new(1, -16, 0, 32)
+    hopBtn.Position = UDim2.new(0, 8, 0, 128)
+    hopBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 200)
     hopBtn.Font = Enum.Font.GothamBold
-    hopBtn.TextSize = 14
-    hopBtn.TextColor3 = Color3.new(1,1,1)
+    hopBtn.TextSize = 16
+    hopBtn.TextColor3 = Color3.new(1, 1, 1)
     hopBtn.Text = "Hop Server"
-    Instance.new("UICorner", hopBtn).CornerRadius = UDim.new(0,6)
+    Instance.new("UICorner", hopBtn).CornerRadius = UDim.new(0, 8)
 
-    -- Hide/Show button (kept on the bottom center of screen)
+    -- Hide/Show button
     local toggleBtn = Instance.new("TextButton")
     toggleBtn.Name = "ToggleBtn"
-    toggleBtn.Size = UDim2.new(0, 120, 0, 36)
-    toggleBtn.Position = UDim2.new(0.5, -60, 1, -56)
+    toggleBtn.Size = UDim2.new(0, 140, 0, 40)
+    toggleBtn.Position = UDim2.new(0.5, -70, 1, -60)
     toggleBtn.AnchorPoint = Vector2.new(0.5, 1)
-    toggleBtn.BackgroundColor3 = Color3.fromRGB(40,40,40)
+    toggleBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
     toggleBtn.Font = Enum.Font.GothamBold
-    toggleBtn.TextSize = 15
-    toggleBtn.TextColor3 = Color3.new(1,1,1)
+    toggleBtn.TextSize = 16
+    toggleBtn.TextColor3 = Color3.new(1, 1, 1)
     toggleBtn.Text = "Hide UI"
     toggleBtn.Parent = screenGui
-    Instance.new("UICorner", toggleBtn).CornerRadius = UDim.new(0,8)
+    Instance.new("UICorner", toggleBtn).CornerRadius = UDim.new(0, 10)
 
-    -- simple exposure of key UI elements
     return {
         screenGui = screenGui,
         bg = bg,
@@ -225,8 +223,88 @@ hopBtn.MouseButton1Click:Connect(function()
     task.spawn(hopServer)
 end)
 
--- FARMING LOGIC (chest → prompt → collect → hop)
-local farming = CONFIG.autoStartFarm and (game.PlaceId == CONFIG.farmPlace) -- only auto start in farmPlace
+-- Improved server hopping function
+local function hopServer()
+    setStatus("Hopping")
+    local gameId = game.PlaceId
+    local attempts = 0
+
+    while attempts < CONFIG.maxHopAttempts do
+        attempts = attempts + 1
+        local success, body = pcall(function()
+            return game:HttpGet(("https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Asc&limit=100"):format(gameId))
+        end)
+        if not success or not body then
+            notify("Flashlight Hub", "Failed to fetch servers (Attempt " .. attempts .. ")", 3)
+            task.wait(CONFIG.hopAttemptDelay)
+            continue
+        end
+
+        local ok, data = pcall(function() return HttpService:JSONDecode(body) end)
+        if not ok or not data or not data.data or #data.data == 0 then
+            notify("Flashlight Hub", "No valid servers found (Attempt " .. attempts .. ")", 3)
+            task.wait(CONFIG.hopAttemptDelay)
+            continue
+        end
+
+        local servers = {}
+        for _, server in ipairs(data.data) do
+            if server.id and server.id ~= game.JobId and server.playing < server.maxPlayers then
+                table.insert(servers, server)
+            end
+        end
+
+        if #servers == 0 then
+            notify("Flashlight Hub", "No available servers (Attempt " .. attempts .. ")", 3)
+            task.wait(CONFIG.hopAttemptDelay)
+            continue
+        end
+
+        -- Shuffle servers for better distribution
+        math.randomseed(tick() + os.time() + attempts)
+        for i = #servers, 2, -1 do
+            local j = math.random(1, i)
+            servers[i], servers[j] = servers[j], servers[i]
+        end
+
+        for _, server in ipairs(servers) do
+            notify("Flashlight Hub", "Attempting hop to " .. server.id .. " (Attempt " .. attempts .. ")", 2)
+            local ok, err = pcall(function()
+                TeleportService:TeleportToPlaceInstance(gameId, server.id, LocalPlayer)
+            end)
+            if ok then
+                setStatus("Hopping successful")
+                return
+            else
+                notify("Flashlight Hub", "Hop failed: " .. tostring(err) .. " (Retrying)", 2)
+                task.wait(CONFIG.hopAttemptDelay)
+            end
+        end
+    end
+
+    notify("Flashlight Hub", "All " .. CONFIG.maxHopAttempts .. " hop attempts failed", 4)
+    setStatus("Idle")
+end
+
+-- Duplicate detection (hop protection)
+if CONFIG.hopProtection then
+    task.spawn(function()
+        while task.wait(1) do
+            for _, char in pairs(workspace:GetChildren()) do
+                if char:IsA("Model") and char:FindFirstChild("Humanoid") and char:FindFirstChild("HumanoidRootPart") then
+                    local success, displayName = pcall(function() return char.Humanoid.DisplayName end)
+                    if success and displayName == LocalPlayer.DisplayName and char ~= LocalPlayer.Character then
+                        notify("Flashlight Hub", "Duplicate detected — hopping", 3)
+                        hopServer()
+                    end
+                end
+            end
+        end
+    end)
+end
+
+-- Main farm cycle
+local farming = CONFIG.autoStartFarm and (game.PlaceId == CONFIG.farmPlace)
 
 local function farmCycle()
     setStatus("Farming")
@@ -239,7 +317,7 @@ local function farmCycle()
         -- find chest
         local chest = workspace:FindFirstChild("Items") and (workspace.Items:FindFirstChild("Stronghold Diamond Chest") or workspace.Items:FindFirstChild("Chest"))
         if not chest then
-            notify("Chest", "Chest not found — hopping", 3)
+            notify("Flashlight Hub", "Chest not found — hopping", 3)
             setStatus("Hopping (no chest)")
             hopServer()
             return
@@ -248,7 +326,7 @@ local function farmCycle()
         -- move to chest
         pcall(function()
             local pivot = chest:GetPivot()
-            hrp:PivotTo(CFrame.new(pivot.Position + Vector3.new(0,5,0)))
+            hrp:PivotTo(CFrame.new(pivot.Position + Vector3.new(0, 5, 0)))
         end)
 
         -- find prompt
@@ -264,7 +342,7 @@ local function farmCycle()
         if not farming then break end
 
         if not proxPrompt then
-            notify("Prompt", "No prompt found — hopping", 3)
+            notify("Flashlight Hub", "No prompt found — hopping", 3)
             setStatus("Hopping (no prompt)")
             hopServer()
             return
@@ -277,7 +355,7 @@ local function farmCycle()
         end
 
         if proxPrompt and proxPrompt.Parent then
-            notify("Prompt", "Prompt timed out — hopping", 3)
+            notify("Flashlight Hub", "Prompt timed out — hopping", 3)
             setStatus("Hopping (timeout)")
             hopServer()
             return
@@ -298,7 +376,7 @@ local function farmCycle()
             end
         end
 
-        notify("Collected", "Diamonds collected (" .. collected .. ") — hopping", 3)
+        notify("Flashlight Hub", "Diamonds collected (" .. collected .. ") — hopping", 3)
         setStatus("Hopping (collected)")
         task.wait(1)
         hopServer() -- hop to next server after collect
@@ -310,13 +388,13 @@ end
 -- Start/Stop button behavior
 startBtn.MouseButton1Click:Connect(function()
     farming = not farming
-    startBtn.BackgroundColor3 = farming and Color3.fromRGB(0,150,0) or Color3.fromRGB(120,0,0)
+    startBtn.BackgroundColor3 = farming and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(120, 0, 0)
     startBtn.Text = farming and "Stop Farming" or "Start Farming"
     if farming then
-        notify("Farming", "Farming started", 3)
+        notify("Flashlight Hub", "Farming started", 3)
         task.spawn(farmCycle)
     else
-        notify("Farming", "Farming stopped", 3)
+        notify("Flashlight Hub", "Farming stopped", 3)
         setStatus("Idle")
     end
 end)
@@ -325,12 +403,12 @@ end)
 if CONFIG.autoStartFarm and game.PlaceId == CONFIG.farmPlace then
     farming = true
     startBtn.Text = "Stop Farming"
-    startBtn.BackgroundColor3 = Color3.fromRGB(0,150,0)
+    startBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
     task.spawn(farmCycle)
 else
     farming = false
     startBtn.Text = "Start Farming"
-    startBtn.BackgroundColor3 = Color3.fromRGB(120,0,0)
+    startBtn.BackgroundColor3 = Color3.fromRGB(120, 0, 0)
     setStatus("Idle")
 end
 
