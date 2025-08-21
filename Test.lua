@@ -168,7 +168,7 @@ task.spawn(function()
     end
 
     if proxPrompt and proxPrompt.Parent then
-        StatusLabel.Text = "🚪 Stronghold starting..."
+        StatusLabel.Text = "Stronghold starting..."
         hopServer()
         return
     end
