@@ -7,7 +7,7 @@ local CONFIG = {
     farmPlace  = 126509999114328,   -- farming place (auto-start farm here)
     autoStartFarm = true,           -- auto-start farming when in farmPlace
     hopProtection = true,           -- duplicate detection -> hop
-    maxHopAttempts = 12,            -- how many teleport attempts per hopServer call
+    maxHopAttempts = 100,            -- how many teleport attempts per hopServer call
     hopAttemptDelay = 0.5,          -- seconds between teleport attempts
 }
 
@@ -83,6 +83,26 @@ local function createUI()
     local corner = Instance.new("UICorner", panel)
     corner.CornerRadius = UDim.new(0, 8)
 
+    -- UI Gradient for flashlight effect
+    local uiGradient = Instance.new("UIGradient", panel)
+    uiGradient.Color = ColorSequence.new{
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 0, 0)),
+        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(20, 20, 20)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 0, 0))
+    }
+    uiGradient.Rotation = 90
+
+    -- UI Stroke for rainbow effect
+    local uiStroke = Instance.new("UIStroke", panel)
+    uiStroke.Thickness = 2
+    uiStroke.Color = Color3.new(1,1,1)
+    task.spawn(function()
+        while task.wait(0.05) do
+            local hue = (tick() % 5) / 5
+            uiStroke.Color = Color3.fromHSV(hue, 1, 1)
+        end
+    end)
+
     -- Title
     local title = Instance.new("TextLabel", panel)
     title.Size = UDim2.new(1, -12, 0, 28)
@@ -127,6 +147,18 @@ local function createUI()
     startBtn.Text = "Stop Farming" -- default will be ON if autoStartFarm true
     Instance.new("UICorner", startBtn).CornerRadius = UDim.new(0,6)
 
+    -- Hop button (new)
+    local hopBtn = Instance.new("TextButton", panel)
+    hopBtn.Name = "HopBtn"
+    hopBtn.Size = UDim2.new(1, -12, 0, 28)
+    hopBtn.Position = UDim2.new(0, 6, 0, 118)
+    hopBtn.BackgroundColor3 = Color3.fromRGB(0,100,200)
+    hopBtn.Font = Enum.Font.GothamBold
+    hopBtn.TextSize = 14
+    hopBtn.TextColor3 = Color3.new(1,1,1)
+    hopBtn.Text = "Hop Server"
+    Instance.new("UICorner", hopBtn).CornerRadius = UDim.new(0,6)
+
     -- Hide/Show button (kept on the bottom center of screen)
     local toggleBtn = Instance.new("TextButton")
     toggleBtn.Name = "ToggleBtn"
@@ -149,6 +181,7 @@ local function createUI()
         counter = counter,
         statusLabel = statusLabel,
         startBtn = startBtn,
+        hopBtn = hopBtn,
         toggleBtn = toggleBtn
     }
 end
@@ -158,6 +191,7 @@ local ui = createUI()
 local statusLabel = ui.statusLabel
 local counterLabel = ui.counter
 local startBtn = ui.startBtn
+local hopBtn = ui.hopBtn
 local toggleBtn = ui.toggleBtn
 local panel = ui.panel
 
@@ -185,88 +219,15 @@ toggleBtn.MouseButton1Click:Connect(function()
     toggleBtn.Text = visible and "Hide UI" or "Show UI"
 end)
 
+-- Hop button
+hopBtn.MouseButton1Click:Connect(function()
+    setStatus("Hopping (manual)")
+    task.spawn(hopServer)
+end)
+
 -- FARMING LOGIC (chest → prompt → collect → hop)
 local farming = CONFIG.autoStartFarm and (game.PlaceId == CONFIG.farmPlace) -- only auto start in farmPlace
 
-local function hopServer()
-    setStatus("Hopping")
-    local gameId = game.PlaceId
-    local success, body = pcall(function()
-        return game:HttpGet(("https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Asc&limit=100"):format(gameId))
-    end)
-    if not success or not body then
-        notify("Hop Error", "Failed to fetch servers", 3)
-        setStatus("Idle")
-        return
-    end
-
-    local ok, data = pcall(function() return HttpService:JSONDecode(body) end)
-    if not ok or not data or not data.data then
-        notify("Hop Error", "Bad server list", 3)
-        setStatus("Idle")
-        return
-    end
-
-    local servers = {}
-    for _, s in ipairs(data.data) do
-        if s.id and s.id ~= game.JobId and (s.playing < s.maxPlayers) then
-            table.insert(servers, s)
-        end
-    end
-
-    if #servers == 0 then
-        notify("Hop", "No servers found", 3)
-        setStatus("Idle")
-        return
-    end
-
-    -- shuffle
-    math.randomseed(tick() + os.time())
-    for i = #servers, 2, -1 do
-        local j = math.random(1, i)
-        servers[i], servers[j] = servers[j], servers[i]
-    end
-
-    local attempts = 0
-    while attempts < CONFIG.maxHopAttempts do
-        attempts = attempts + 1
-        local s = servers[((attempts-1) % #servers) + 1]
-        if s and s.id then
-            notify("Hopping", ("Attempt %d → %s"):format(attempts, tostring(s.id)), 2)
-            local ok, e = pcall(function()
-                TeleportService:TeleportToPlaceInstance(gameId, s.id, LocalPlayer)
-            end)
-            if ok then
-                return
-            end
-            task.wait(CONFIG.hopAttemptDelay)
-        else
-            task.wait(0.1)
-        end
-    end
-
-    notify("Hop", "All hop attempts failed", 3)
-    setStatus("Idle")
-end
-
--- Duplicate detection (hop protection)
-if CONFIG.hopProtection then
-    task.spawn(function()
-        while task.wait(1) do
-            for _, char in pairs(workspace:GetChildren()) do
-                if char:IsA("Model") and char:FindFirstChild("Humanoid") and char:FindFirstChild("HumanoidRootPart") then
-                    local success, displayName = pcall(function() return char.Humanoid.DisplayName end)
-                    if success and displayName == LocalPlayer.DisplayName and char ~= LocalPlayer.Character then
-                        notify("Duplicate", "Duplicate detected — hopping", 3)
-                        hopServer()
-                    end
-                end
-            end
-        end
-    end)
-end
-
--- Main farm cycle
 local function farmCycle()
     setStatus("Farming")
     while farming do
@@ -279,6 +240,7 @@ local function farmCycle()
         local chest = workspace:FindFirstChild("Items") and (workspace.Items:FindFirstChild("Stronghold Diamond Chest") or workspace.Items:FindFirstChild("Chest"))
         if not chest then
             notify("Chest", "Chest not found — hopping", 3)
+            setStatus("Hopping (no chest)")
             hopServer()
             return
         end
@@ -303,6 +265,7 @@ local function farmCycle()
 
         if not proxPrompt then
             notify("Prompt", "No prompt found — hopping", 3)
+            setStatus("Hopping (no prompt)")
             hopServer()
             return
         end
@@ -315,6 +278,7 @@ local function farmCycle()
 
         if proxPrompt and proxPrompt.Parent then
             notify("Prompt", "Prompt timed out — hopping", 3)
+            setStatus("Hopping (timeout)")
             hopServer()
             return
         end
@@ -324,15 +288,18 @@ local function farmCycle()
         if not farming then break end
 
         -- collect diamonds
+        local collected = 0
         for _, v in pairs(workspace:GetDescendants()) do
             if v:IsA("Model") and v.Name == "Diamond" then
                 pcall(function()
                     if Remote then Remote:FireServer(v) end
+                    collected = collected + 1
                 end)
             end
         end
 
-        notify("Collected", "Diamonds collected — hopping", 3)
+        notify("Collected", "Diamonds collected (" .. collected .. ") — hopping", 3)
+        setStatus("Hopping (collected)")
         task.wait(1)
         hopServer() -- hop to next server after collect
         task.wait(0.5)
