@@ -12058,4 +12058,5 @@ for _, v in pairs(resultNormal) do
 		ServTab:Label(tostring(NormalFruitInfo));
 	end;
 end;
+
 print("Script Loaded!");
